@@ -136,8 +136,8 @@
 
   /* ---- 席図 ---- */
   .board-box{background:#fff; border:1px solid #e6ebf2; border-radius:14px; padding:12px; box-shadow:0 4px 14px rgba(20,45,80,.05); overflow-x:auto}
-  .board-min{min-width:720px}
-  .board{position:relative; width:100%; container-type:inline-size; user-select:none; -webkit-user-select:none}
+  .board-min{min-width:720px; display:flex; justify-content:center}
+  .board{position:relative; width:100%; max-width:100%; container-type:inline-size; user-select:none; -webkit-user-select:none}
   .board .front{position:absolute; left:0; right:0; top:0; height:3.3%; background:var(--navy); color:#fff; border-radius:8px;
     display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.7cqw; letter-spacing:.2em}
   .table{position:absolute; border-radius:50%; background:#eef1f6; border:2px solid #c3cbd7; display:flex; flex-direction:column;
@@ -251,6 +251,7 @@
     body.edit .main{grid-template-columns:1fr}
     .board-box{border:0; box-shadow:none; padding:0}
     .board-min{min-width:0}
+    .board{width:100% !important}
     @page{size:A4 portrait; margin:8mm}
   }
 </style>
@@ -362,6 +363,6 @@
 <script src="haiseki-layouts.js?v=20261018a"></script>
 <script src="haiseki-program.js?v=20261018c"></script>
 <script src="haiseki-image.js?v=20261018d"></script>
-<script src="haiseki.js?v=20261018d"></script>
+<script src="haiseki.js?v=20261018e"></script>
 </body>
 </html>

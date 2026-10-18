@@ -420,10 +420,26 @@
         <b>${esc(t.label)}</b>${t.note ? `<em>${esc(t.note)}</em>` : ""}${c.g || c.a ? `<span>${c.g ? "ゲスト" + c.g : ""}${c.g && c.a ? "・" : ""}${c.a ? "アテンド" + c.a : ""}</span>` : ""}</div>`;
     }).join("");
     const html = lay.seats.map(s => seatHtml(s, seats[s.id], sug[s.id])).join("");
-    $("board").style.aspectRatio = lay.width + " / " + lay.height;
     $("board").innerHTML = `<div class="front">${esc(lay.front)}</div>${tables}${html}`;
     $("board").classList.toggle("picking", !!selected);
+    fitBoard();
     fitNames();
+  }
+  /* 席図を画面の残り高さに合わせて縮め、会場全体が見えるようにする（幅いっぱいに広げない） */
+  function fitBoard() {
+    const el = $("board");
+    if (!el) return;
+    const lay = layout();
+    el.style.aspectRatio = lay.width + " / " + lay.height;
+    if (window.innerWidth <= 980) {
+      el.style.width = "100%";
+      return;
+    }
+    const box = el.closest(".board-box");
+    const maxW = Math.max(360, (box ? box.clientWidth : el.parentElement.clientWidth) || 720);
+    const top = (box || el).getBoundingClientRect().top;
+    const maxH = Math.max(440, window.innerHeight - top - 28);
+    el.style.width = Math.min(maxW, maxH * (lay.width / lay.height)) + "px";
   }
   /* 名前が札からはみ出すときは、収まるまで文字を小さくする（「…」で切らない） */
   function fitNames() {
@@ -439,7 +455,7 @@
       el.style.fontSize = size * 0.96 + "px";
     });
   }
-  window.addEventListener("resize", () => fitNames());
+  window.addEventListener("resize", () => { fitBoard(); fitNames(); });
 
   function personChip(p, extra) {
     const at = seatOf(p.key);
