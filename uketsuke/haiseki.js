@@ -420,26 +420,28 @@
         <b>${esc(t.label)}</b>${t.note ? `<em>${esc(t.note)}</em>` : ""}${c.g || c.a ? `<span>${c.g ? "ゲスト" + c.g : ""}${c.g && c.a ? "・" : ""}${c.a ? "アテンド" + c.a : ""}</span>` : ""}</div>`;
     }).join("");
     const html = lay.seats.map(s => seatHtml(s, seats[s.id], sug[s.id])).join("");
-    $("board").innerHTML = `<div class="front">${esc(lay.front)}</div>${tables}${html}`;
+    const blocks = (lay.blocks || []).map(b => {
+      const ss = lay.seats.filter(s => s.table === b.id);
+      if (!ss.length) return "";
+      const xs = ss.map(s => s.x), ys = ss.map(s => s.y);
+      const x = (Math.min(...xs) + Math.max(...xs)) / 2;
+      const y = Math.min(...ys) - 36;
+      return `<div class="block-lab" style="left:${(x / lay.width) * 100}%;top:${(y / lay.height) * 100}%;transform:translate(-50%,-50%)">${esc(b.label)}</div>`;
+    }).join("");
+    $("board").innerHTML = `<div class="front">${esc(lay.front)}</div>${tables}${blocks}${html}`;
     $("board").classList.toggle("picking", !!selected);
     fitBoard();
     fitNames();
   }
-  /* 席図を画面の残り高さに合わせて縮め、会場全体が見えるようにする（幅いっぱいに広げない） */
+  /* 席の字が読める幅（800px）を上限にする。画面の高さに無理に収めない */
   function fitBoard() {
     const el = $("board");
     if (!el) return;
     const lay = layout();
     el.style.aspectRatio = lay.width + " / " + lay.height;
-    if (window.innerWidth <= 980) {
-      el.style.width = "100%";
-      return;
-    }
     const box = el.closest(".board-box");
-    const maxW = Math.max(360, (box ? box.clientWidth : el.parentElement.clientWidth) || 720);
-    const top = (box || el).getBoundingClientRect().top;
-    const maxH = Math.max(440, window.innerHeight - top - 28);
-    el.style.width = Math.min(maxW, maxH * (lay.width / lay.height)) + "px";
+    const avail = box && box.clientWidth > 40 ? box.clientWidth : 800;
+    el.style.width = Math.min(avail, 800) + "px";
   }
   /* 名前が札からはみ出すときは、収まるまで文字を小さくする（「…」で切らない） */
   function fitNames() {
