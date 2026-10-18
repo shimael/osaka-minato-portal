@@ -19,23 +19,6 @@
     while (s > (min || 9) && ctx.measureText(text).width > maxW * S) { s -= 1; font(ctx, s, weight); }
     return s;
   }
-  /* 席の役名（会員スピーチなど）は長いので、収まらなければ2行にする */
-  function splitLabel(t) {
-    const s = String(t || "");
-    const known = { "会員スピーチ": ["会員", "スピーチ"], "誓いの言葉": ["誓いの", "言葉"], "会長・進行": ["会長・", "進行"] };
-    if (known[s]) return known[s];
-    if (s.length <= 4) return [s];
-    const at = s.indexOf("・");
-    if (at > 0) return [s.slice(0, at + 1), s.slice(at + 1)];
-    return [s];
-  }
-  function labelLines(ctx, t, x, y, size, color, maxW) {
-    const parts = splitLabel(t);
-    if (parts.length === 1) { text(ctx, parts[0], x, y, size, 800, color, "center", maxW, 13); return; }
-    text(ctx, parts[0], x, y - size * 0.58, size, 800, color, "center", maxW, 13);
-    text(ctx, parts[1], x, y + size * 0.58, size, 800, color, "center", maxW, 13);
-  }
-
   function text(ctx, t, x, y, size, weight, color, align, maxW, min) {
     if (!t) return;
     if (maxW) fit(ctx, t, maxW, size, weight, min); else font(ctx, size, weight);
@@ -52,7 +35,7 @@
   function programHeight(p) {
     if (!p) return 0;
     if (p.recess) return 110;
-    return 90 + (p.speakers || []).length * 86 + 64;
+    return 90 + (p.speakers || []).length * 108 + 64;
   }
 
   function drawProgram(ctx, p, x, y, w) {
@@ -78,7 +61,8 @@
       if (s.callAs) text(ctx, "呼び出し　" + s.callAs, x + 18, yy + 44, 16, 600, "#30475e", "left", w - 36, 11);
       const title = (s.title || "").replace(/\n/g, " ");
       if (title) text(ctx, title, x + 18, yy + 64, 18, 800, "#0f2f4f", "left", w - 36, 12);
-      yy += 86;
+      text(ctx, "ホワイトボード " + s.whiteboard + "　／　プロジェクター " + s.projector, x + 18, yy + 86, 15, 700, "#6b7686", "left", w - 36, 10);
+      yy += 108;
     });
     if (p.speech) text(ctx, "会員スピーチ　" + p.speech.name + (p.speech.kana ? "　" + p.speech.kana : ""), x + 18, yy + 8, 22, 800, "#2f6f4e", "left", w - 36, 14);
     else text(ctx, "会員スピーチ　なし", x + 18, yy + 8, 22, 800, "#6b7686", "left");
@@ -146,7 +130,7 @@
         round(ctx, x, y, w, h, 8);
         ctx.fillStyle = "#f6f8fb"; ctx.fill();
         ctx.lineWidth = 1.5 * S; ctx.strokeStyle = "#dde3eb"; ctx.stroke();
-        if (s.label) labelLines(ctx, s.label, s.x, s.y, narrow ? 18 : 22, "#5d6875", w - 8);
+        if (s.label) text(ctx, s.label, s.x, s.y, 17, 700, "#a6afbd", "center", w - 8, 10);
         return;
       }
       const c = o.colors[p.role] || o.colors.member;
@@ -155,13 +139,13 @@
       ctx.lineWidth = (p.type === "guest" ? 3.5 : 2.5) * S; ctx.strokeStyle = c.line; ctx.stroke();
       const inner = w - 12;
       if (p.type === "guest") {
-        text(ctx, p.kana, s.x, y + 16, narrow ? 13 : 16, 600, "#3c6a96", "center", inner, 9);
-        text(ctx, p.name + "様", s.x, s.y + 3, narrow ? 22 : 26, 800, c.ink, "center", inner, 12);
-        text(ctx, p.referrer ? "紹介 " + p.referrer : "", s.x, y + h - 14, narrow ? 12 : 15, 600, "#3c6a96", "center", inner, 9);
+        text(ctx, p.kana, s.x, y + 15, narrow ? 12 : 14, 600, "#3c6a96", "center", inner, 8);
+        text(ctx, p.name + "様", s.x, s.y + 2, narrow ? 21 : 25, 800, c.ink, "center", inner, 11);
+        text(ctx, p.referrer ? "紹介 " + p.referrer : "", s.x, y + h - 13, narrow ? 11 : 13, 600, "#3c6a96", "center", inner, 8);
       } else {
         const tag = p.role === "yaku" && s.label ? s.label : o.roleShort[p.role] || "";
-        if (tag) text(ctx, tag, s.x, y + 18, narrow ? 15 : 19, 800, c.line, "center", inner, 12);
-        text(ctx, p.name, s.x, tag ? s.y + 12 : s.y, narrow ? 21 : 26, 800, c.ink, "center", inner, 12);
+        if (tag) text(ctx, tag, s.x, y + 16, narrow ? 12 : 15, 800, c.line, "center", inner, 8);
+        text(ctx, p.name, s.x, tag ? s.y + 9 : s.y, narrow ? 20 : 24, 800, c.ink, "center", inner, 11);
       }
     });
     ctx.restore();

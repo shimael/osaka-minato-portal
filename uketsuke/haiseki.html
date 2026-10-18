@@ -83,6 +83,7 @@
   .p-card.speech .kn{color:#3d6b50}
   .p-card .call{margin-top:4px; font-size:.8rem; color:#30475e; line-height:1.45}
   .p-card .ttl{margin-top:4px; font-size:.88rem; font-weight:800; color:#0f2f4f; line-height:1.4; white-space:pre-line}
+  .p-card .eq{margin-top:5px; font-size:.76rem; color:#6b7686}
   .p-empty{font-size:.84rem; color:var(--sub); margin:0}
 
   /* ---- 本体：左にゲスト、右に席図 ---- */
@@ -136,47 +137,36 @@
 
   /* ---- 席図 ---- */
   .board-box{background:#fff; border:1px solid #e6ebf2; border-radius:14px; padding:12px; box-shadow:0 4px 14px rgba(20,45,80,.05); overflow-x:auto}
-  .board-min{min-width:0; display:flex; justify-content:center}
-  .board{position:relative; width:min(100%,800px); background:#e6ebf2; border-radius:12px;
-    container-type:inline-size; user-select:none; -webkit-user-select:none}
-  .block-lab{position:absolute; font-size:max(10px,1.35cqw); font-weight:800; color:#7a8494; letter-spacing:.04em;
-    text-align:center; pointer-events:none; white-space:nowrap}
+  .board-min{min-width:720px}
+  .board{position:relative; width:100%; container-type:inline-size; user-select:none; -webkit-user-select:none}
   .board .front{position:absolute; left:0; right:0; top:0; height:3.3%; background:var(--navy); color:#fff; border-radius:8px;
     display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.7cqw; letter-spacing:.2em}
-  .table{position:absolute; border-radius:50%; background:#d5dce6; border:3px solid #8b96a6; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; color:#4a5566; line-height:1.15; text-align:center; box-shadow:inset 0 0 0 6px #e8edf3}
-  .table b{font-size:3.4cqw}
-  .table em{font-style:normal; font-size:1.35cqw; font-weight:800}
+  .table{position:absolute; border-radius:50%; background:#eef1f6; border:2px solid #c3cbd7; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; color:#8a96a8; line-height:1.15; text-align:center}
+  .table b{font-size:3.1cqw}
+  .table em{font-style:normal; font-size:1.25cqw; font-weight:800}
   .table span{font-size:1.05cqw; font-weight:800; color:#2f6f4e}
   .seat{position:absolute; box-sizing:border-box; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center;
     text-align:center; line-height:1.2; padding:2px 4px; overflow:hidden; background:#fff; border:2px solid #8a96a8}
   body.edit .seat{cursor:pointer}
   body.edit .seat[data-drag]{cursor:grab}
-  .seat .s-top{font-size:1.45cqw; font-weight:800; color:#3c6a96; line-height:1.15; white-space:normal; max-width:100%}
-  .seat.r-guest .s-top{font-size:1.2cqw; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .seat .s-top{font-size:1.1cqw; font-weight:700; color:#3c6a96; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
   .seat .s-name{font-size:2.05cqw; font-weight:800; color:#16202e; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
   .seat .s-name small{font-size:.62em; margin-left:1px}
-  .seat .s-sub{font-size:1.05cqw; font-weight:600; color:#3c6a96; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
+  .seat .s-sub{font-size:1cqw; font-weight:600; color:#3c6a96; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
   .seat.long .s-name{font-size:1.7cqw}
   .seat.xlong .s-name{font-size:1.4cqw}
   .seat.narrow .s-name{font-size:1.6cqw}
   .seat.narrow.long .s-name{font-size:1.25cqw}
-  .seat.narrow .s-top{font-size:1.15cqw}
-  .seat.narrow .s-sub{font-size:.9cqw}
+  .seat.narrow .s-top,.seat.narrow .s-sub{font-size:.85cqw}
   .seat .s-mark{position:absolute; top:-1px; right:-1px; font-style:normal; font-size:.85cqw; font-weight:800; background:#c8a24a; color:#fff; border-radius:0 6px 0 6px; padding:1px 4px}
   .seat.empty{background:#f6f8fb; border:1.5px solid #dde3eb}
-  .seat.empty:not([class*="h-"]){background:#f3f5f8; border:1px dashed #cfd6e0; opacity:.55}
-  .seat .s-hint{font-size:max(12px,2.15cqw); font-weight:800; color:#6b7686; line-height:1.15; white-space:normal; max-width:96%; padding:0 2px}
-  .seat.empty.h-leader,.seat.empty.h-chair,.seat.empty.h-speaker,.seat.empty.h-mc,.seat.empty.h-yaku{
-    opacity:1; background:#fff; border-width:2px}
-  .seat.empty.h-leader{border-color:#3c9a4c}
-  .seat.empty.h-leader .s-hint{color:#2f6f4e}
-  .seat.empty.h-chair{border-color:#d2493a; background:#fff1ef}
-  .seat.empty.h-chair .s-hint{color:#d2493a}
-  .seat.empty.h-speaker{border-color:#cf4f95; background:#fff0f7}
-  .seat.empty.h-speaker .s-hint{color:#a33a74}
-  .seat.empty.h-mc,.seat.empty.h-yaku{border-color:#b9861b; background:#fffaf0}
-  .seat.empty.h-mc .s-hint,.seat.empty.h-yaku .s-hint{color:#8a6620}
+  .seat .s-hint{font-size:1.1cqw; font-weight:700; color:#a6afbd}
+  .seat.empty.h-leader{border-color:#cfe6d3}
+  .seat.empty.h-leader .s-hint{color:#7fb98a}
+  .seat.empty.h-chair .s-hint{color:#e0938a}
+  .seat.empty.h-speaker .s-hint{color:#e39ac2}
+  .seat.empty.h-mc .s-hint,.seat.empty.h-yaku .s-hint{color:#cfae63}
   .board.picking .seat.target{border:2px dashed #c2410c; background:#fff7f2}
   .board.picking .seat[data-drag]{box-shadow:0 0 0 2px rgba(194,65,12,.25)}
   .seat.drop-on{outline:3px solid #c2410c; outline-offset:1px}
@@ -260,7 +250,6 @@
     body.edit .main{grid-template-columns:1fr}
     .board-box{border:0; box-shadow:none; padding:0}
     .board-min{min-width:0}
-    .board{width:100% !important}
     @page{size:A4 portrait; margin:8mm}
   }
 </style>
@@ -369,9 +358,9 @@
 <script src="members-data.js?v=20261013a"></script>
 <script src="config.js?v=20261011a"></script>
 <script src="app.js?v=20261007a"></script>
-<script src="haiseki-layouts.js?v=20261018g"></script>
+<script src="haiseki-layouts.js?v=20261018h"></script>
 <script src="haiseki-program.js?v=20261018c"></script>
-<script src="haiseki-image.js?v=20261018d"></script>
-<script src="haiseki.js?v=20261018g"></script>
+<script src="haiseki-image.js?v=20261018h"></script>
+<script src="haiseki.js?v=20261018h"></script>
 </body>
 </html>
