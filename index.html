@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>大阪みなと倫理法人会 ポータル</title>
+<style>
+  :root{
+    --navy:#0f2f4f; --navy-2:#16436c; --navy-3:#0a2036;
+    --gold:#c8a24a; --gold-2:#e5c884;
+    --bg:#eef1f6; --card:#ffffff; --ink:#16202e; --sub:#6b7686; --line:#e5e9f0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  /* ===== ヒーロー ===== */
+  .hero{position:relative;background:linear-gradient(150deg,var(--navy-3),var(--navy) 55%,var(--navy-2));
+    color:#fff;padding:44px 22px 60px;overflow:hidden;text-align:center;}
+  .hero::before{content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(circle at 80% 15%,rgba(200,162,74,.28),transparent 45%),
+      radial-gradient(circle at 12% 85%,rgba(200,162,74,.16),transparent 40%);}
+  .hero::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:34px;
+    background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0;}
+  .crest{position:relative;width:56px;height:56px;margin:0 auto 14px;border-radius:50%;
+    border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;
+    font-size:1.5rem;font-weight:800;color:var(--gold);letter-spacing:.02em;
+    background:rgba(255,255,255,.04)}
+  .hero .lock{position:relative;display:inline-flex;align-items:center;gap:6px;
+    font-size:.72rem;letter-spacing:.08em;color:var(--gold-2);
+    border:1px solid rgba(200,162,74,.5);border-radius:20px;padding:4px 12px;margin-bottom:16px}
+  .hero h1{position:relative;margin:0;font-size:1.7rem;font-weight:800;letter-spacing:.08em}
+  .hero .en{position:relative;margin:8px 0 0;font-size:.72rem;letter-spacing:.28em;
+    color:rgba(255,255,255,.6);text-transform:uppercase}
+  .hero .tag{position:relative;margin:14px auto 0;max-width:520px;font-size:.9rem;
+    line-height:1.7;color:rgba(255,255,255,.82)}
+
+  /* ===== 本体 ===== */
+  .wrap{max-width:960px;margin:-24px auto 0;padding:0 18px 70px;position:relative}
+  .section-label{display:flex;align-items:center;gap:10px;margin:26px 4px 14px;
+    font-size:.82rem;font-weight:800;color:var(--navy);letter-spacing:.06em}
+  .section-label::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+  .tile{display:flex;gap:14px;align-items:center;background:var(--card);border:1px solid #eaeef4;
+    border-radius:16px;padding:16px 16px;text-decoration:none;color:inherit;
+    box-shadow:0 4px 16px rgba(20,45,80,.06);transition:transform .15s,box-shadow .15s,border-color .15s;
+    position:relative;overflow:hidden}
+  .tile:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(20,45,80,.14);border-color:#dfe5ee}
+  .tile:active{transform:translateY(-1px)}
+  .ic{flex:0 0 auto;width:48px;height:48px;border-radius:12px;display:flex;align-items:center;
+    justify-content:center;color:#fff;background:linear-gradient(140deg,var(--navy),var(--navy-2))}
+  .ic.gold{background:linear-gradient(140deg,#b78a2e,var(--gold))}
+  .tile .t-title{font-size:1.05rem;font-weight:800;line-height:1.25}
+  .tile .t-desc{font-size:.74rem;color:var(--sub);margin-top:3px;line-height:1.4}
+  .tile .arrow{margin-left:auto;color:var(--gold);opacity:.7;flex:0 0 auto}
+  .tile.soon{pointer-events:none;opacity:.62}
+  .tile.soon .ic{background:#b9c2d0}
+  .badge-soon{position:absolute;top:10px;right:10px;font-size:.6rem;font-weight:800;
+    color:#8a93a3;background:#eef1f6;border-radius:20px;padding:2px 8px;letter-spacing:.04em}
+
+  footer{text-align:center;color:var(--sub);font-size:.72rem;padding:10px 20px 40px;line-height:1.7}
+  footer .divider{width:40px;height:2px;background:var(--gold);border-radius:2px;margin:0 auto 14px}
+
+  @media(max-width:560px){
+    .hero h1{font-size:1.42rem}
+    .grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="crest">倫</div>
+  <span class="lock">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    役 職 者 限 定
+  </span>
+  <h1>大阪みなと倫理法人会</h1>
+  <p class="en">Osaka Minato Rinri Corporate Association</p>
+  <p class="tag">役職者向けの各種資料ポータルです。名簿・組織図・スケジュールなどをこちらから確認できます。</p>
+</header>
+
+<div class="wrap">
+  <div id="portal"></div>
+</div>
+
+<footer>
+  <div class="divider"></div>
+  大阪みなと倫理法人会 役職者ポータル<br>
+  このページのURLは役職者以外に共有しないでください。
+</footer>
+
+<script>
+  /* ============================================================
+     ▼ リンクはここに追加するだけ（1行足せばタイルが増えます）▼
+       group : セクション名
+       title : タイトル / desc : 補足 / href : リンク先
+       icon  : 下の ICONS のキー / gold:true で金アイコン
+       soon  : true にすると「準備中」表示（リンク無効）
+     ============================================================ */
+  const SECTIONS = [
+    { group:"名簿・組織", items:[
+      { title:"会員名簿", desc:"氏名・読み仮名・役職・入会年数", href:"meibo.html", icon:"users", gold:true },
+      { title:"目標達成ボード", desc:"目標まであと何名か・在籍・入会予定・退会予定", href:"mokuhyo/index.html", icon:"chart", gold:true },
+      { title:"組織図",   desc:"役員体制・委員会構成",         href:"https://osaka-minato-soshikizu2026-2027.surge.sh", icon:"org" },
+    ]},
+    { group:"予定・行事", items:[
+      { title:"年間スケジュール", desc:"例会・行事の年間予定",   href:"https://osaka-minato-rinri.surge.sh", icon:"calendar" },
+    ]},
+    { group:"モーニングセミナー", items:[
+      { title:"モーニングセミナー", desc:"講話者と会員スピーチの履歴", href:"ms/history.html", icon:"sun", gold:true },
+      { title:"MS受付",       desc:"当日のチェックイン",   href:"uketsuke/index.html", icon:"users", gold:true },
+      { title:"ゲスト情報",   desc:"週ごとのゲスト（過去の回・先の予約も）", href:"uketsuke/guests.html", icon:"users" },
+      { title:"配席",         desc:"MS・朝食会のゲストとアテンドの席", href:"uketsuke/haiseki.html", icon:"users" },
+      { title:"履歴・集計",   desc:"締め切った回の集計と修正", href:"uketsuke/rireki.html", icon:"chart" },
+      { title:"チーム別出席", desc:"チームごとの月別出席率",   href:"team/index.html", icon:"chart" },
+      { title:"出席簿",       desc:"会員ひとりずつの出席記録", href:"book/index.html", icon:"book" },
+    ]},
+    { group:"資料・その他", items:[
+      { title:"会報・お知らせ", desc:"バックナンバー一覧",       href:"#", icon:"doc", soon:true },
+      { title:"各種様式",       desc:"申込書・報告書など",       href:"#", icon:"folder", soon:true },
+    ]},
+  ];
+
+  const ICONS = {
+    users:'<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.6"/><path d="M15 20a4.5 4.5 0 0 1 6.5-4"/>',
+    org:'<rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="15" width="6" height="5" rx="1"/><rect x="15" y="15" width="6" height="5" rx="1"/><path d="M12 8v4M12 12H6v3M12 12h6v3"/>',
+    calendar:'<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9h17M8 3v4M16 3v4"/>',
+    sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/>',
+    chart:'<path d="M4 19V10M10 19V5M16 19v-8"/><path d="M3 19h18"/>',
+    doc:'<path d="M6 2h8l4 4v16H6z"/><path d="M14 2v4h4M9 12h6M9 16h6"/>',
+    folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    book:'<path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M6 3v16"/>',
+  };
+  const ARROW='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>';
+
+  function iconSvg(key){
+    return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[key]||ICONS.doc}</svg>`;
+  }
+
+  document.getElementById("portal").innerHTML = SECTIONS.map(sec=>`
+    <div class="section-label">${sec.group}</div>
+    <div class="grid">
+      ${sec.items.map(it=>{
+        const cls = "tile"+(it.soon?" soon":"");
+        const icCls = "ic"+(it.gold?" gold":"");
+        return `<a class="${cls}" href="${it.soon?'#':it.href}">
+          ${it.soon?'<span class="badge-soon">準備中</span>':''}
+          <span class="${icCls}">${iconSvg(it.icon)}</span>
+          <span>
+            <span class="t-title">${it.title}</span>
+            <span class="t-desc">${it.desc||''}</span>
+          </span>
+          ${it.soon?'':'<span class="arrow">'+ARROW+'</span>'}
+        </a>`;
+      }).join("")}
+    </div>`).join("");
+</script>
+</body>
+</html>

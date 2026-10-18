@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>モーニングセミナー | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20260917j">
+</head>
+<body data-page="history">
+<header class="topbar">
+  <h1>モーニングセミナー</h1>
+  <p class="sub">期は9月はじまりです。表はこの端末に保存した履歴を表示し、担当表の最新は「更新」で取り込みます。</p>
+  <div class="meta">
+    <span class="who">表示中：<strong id="who-name"></strong>
+      <button type="button" id="btn-logout">切り替え</button>
+    </span>
+    <span id="ms-save-flag" hidden>保存しています…</span>
+  </div>
+</header>
+<script src="../portal-nav.js?v=20261018a" data-section="ms" data-tab="history"></script>
+
+<div class="wrap">
+  <div id="store-mode" class="banner" hidden></div>
+  <div id="app"></div>
+</div>
+
+<div class="overlay" id="auth-overlay" hidden>
+  <form class="auth-card" id="auth-form">
+    <h2>役職者だけが使います</h2>
+    <p>合言葉と、記録に残すお名前を入れてください。</p>
+    <div class="field">
+      <span class="lbl">お名前</span>
+      <input id="auth-name" autocomplete="name" required>
+    </div>
+    <div class="field" id="auth-key-row">
+      <span class="lbl">合言葉</span>
+      <input id="auth-key" type="password" autocomplete="current-password">
+    </div>
+    <p class="err" id="auth-error"></p>
+    <button class="btn primary" type="submit">入る</button>
+  </form>
+</div>
+
+<footer>大阪みなと倫理法人会　役職者ポータル</footer>
+<script src="../meibo-data.js"></script>
+<script src="history-data.js?v=20260917j"></script>
+<script src="config.js?v=20260917j"></script>
+<script src="app.js?v=20260917j"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  let q = "";
+  let tab = "sessions";
+  let nendoFilter = "";
+  let refreshing = false;
+  const STATS_URL = "../uketsuke/shukei.html";
+  const GUESTS_URL = "../uketsuke/guests.html";
+
+  function matchQ(text) {
+    if (!q) return true;
+    return String(text || "").replace(/\s+/g, "").toLowerCase().indexOf(q.replace(/\s+/g, "").toLowerCase()) >= 0;
+  }
+
+  function uketsukeHref(base, date) {
+    return base + "?date=" + encodeURIComponent(date) + "&event=" + encodeURIComponent("モーニングセミナー");
+  }
+
+  function dash(s) {
+    const t = String(s || "").trim();
+    if (!t) return '<span class="muted">—</span>';
+    return MS.escapeHtml(t).replace(/\n/g, "<br>");
+  }
+
+  function sessionBlob(r) {
+    const kowa = (r.kowa || []).map(p => [p.speakerName, p.callAs, p.speakerOrg, p.speakerRole].join(" ")).join(" ");
+    const speech = (r.speech || []).map(p => [p.speakerName, p.speakerOrg, p.speakerRole].join(" ")).join(" ");
+    return [r.date, r.eventTag, kowa, speech].join(" ");
+  }
+
+  function memberHistory() {
+    const byId = {};
+    MS.meibo.forEach(m => {
+      byId[m.id] = { member: m, speech: [], kowa: [] };
+    });
+    (MS.historyRows() || []).forEach(r => {
+      (r.kowa || []).forEach(p => {
+        if (p.memberId && byId[p.memberId]) {
+          if (!byId[p.memberId].kowa.some(x => x.date === r.date)) {
+            byId[p.memberId].kowa.push({ date: r.date, kind: "講話", title: p.title || "" });
+          }
+        }
+      });
+      (r.speech || []).forEach(p => {
+        if (p.memberId && byId[p.memberId]) {
+          if (!byId[p.memberId].speech.some(x => x.date === r.date)) {
+            byId[p.memberId].speech.push({ date: r.date, kind: "会員スピーチ", title: p.title || "" });
+          }
+        }
+      });
+    });
+    const members = Object.values(byId).map(row => {
+      row.speech.sort((a, b) => MS.cmpDate(b.date, a.date));
+      row.kowa.sort((a, b) => MS.cmpDate(b.date, a.date));
+      row.lastSpeech = row.speech[0] ? row.speech[0].date : "";
+      row.lastKowa = row.kowa[0] ? row.kowa[0].date : "";
+      return row;
+    });
+    return { members };
+  }
+
+  function savedLabel() {
+    const ts = MS.roster && MS.roster.savedAt;
+    if (!ts) return "まだ取り込んでいません";
+    const d = new Date(ts);
+    return (d.getMonth() + 1) + "月" + d.getDate() + "日 "
+      + String(d.getHours()).padStart(2, "0") + ":"
+      + String(d.getMinutes()).padStart(2, "0") + " 保存";
+  }
+
+  function personAt(list, i) {
+    return (list && list[i]) || { speakerName: "", callAs: "", speakerOrg: "", speakerRole: "" };
+  }
+
+  function sessionRowsHtml(rows, today, showNendoHead, nextDate) {
+    let html = "";
+    let lastNendo = "";
+    rows.forEach(r => {
+      const nendo = MS.nendoKey(r.date);
+      if (showNendoHead && nendo && nendo !== lastNendo) {
+        lastNendo = nendo;
+        html += `<tr class="year-row"><td colspan="8">${MS.nendoLabel(nendo)}（${MS.nendoRangeLabel(nendo)}）</td></tr>`;
+      }
+      const kowa = r.recess ? [] : (r.kowa || []);
+      const speech = r.recess ? [] : (r.speech || []);
+      const n = Math.max(1, kowa.length, speech.length);
+      const future = r.date >= today;
+      const isNext = r.date === nextDate;
+      const tag = r.recess ? "休会" : (r.eventTag || "");
+      for (let i = 0; i < n; i++) {
+        const kp = personAt(kowa, i);
+        const sp = personAt(speech, i);
+        const cls = isNext
+          ? "next-session" + (i === 0 ? " next-start" : "") + (i === n - 1 ? " next-end" : "")
+          : "";
+        html += `<tr${cls ? ` class="${cls}"` : ""}>`;
+        if (i === 0) {
+          html += `<td rowspan="${n}">
+            <a href="detail.html?date=${r.date}">${MS.jaDate(r.date, true)}</a>
+            ${isNext ? `<div class="next-flag">次回</div>` : (future ? `<div class="muted">予定</div>` : "")}
+            ${tag ? `<div class="muted">${MS.escapeHtml(tag)}</div>` : ""}
+          </td>`;
+        }
+        if (r.recess && i === 0) {
+          html += `<td colspan="3" class="grp-kowa">休会</td><td colspan="3" class="grp-speech">休会</td>`;
+        } else {
+          html += `<td class="grp-kowa">${dash(kp.speakerName)}</td><td class="grp-kowa">${dash(kp.callAs)}</td><td class="grp-kowa">${dash(kp.speakerOrg)}</td>`;
+          html += `<td class="grp-speech">${dash(sp.speakerName)}</td><td class="grp-speech">${dash(sp.speakerOrg)}</td><td class="grp-speech">${dash(sp.speakerRole)}</td>`;
+        }
+        if (i === 0) {
+          html += `<td rowspan="${n}" class="hist-links">
+            <a href="${uketsukeHref(STATS_URL, r.date)}">出欠</a>
+            <a href="${uketsukeHref(GUESTS_URL, r.date)}">ゲスト</a>
+          </td>`;
+        }
+        html += "</tr>";
+      }
+    });
+    return html;
+  }
+
+  function render() {
+    const today = MS.todayYmd();
+    const saved = MS.historyRows() || [];
+    const nendos = MS.nendosOf(saved);
+    const cur = MS.currentNendoKey();
+    if (cur && nendos.indexOf(cur) < 0) nendos.unshift(cur);
+    if (!nendoFilter) nendoFilter = nendos.indexOf(cur) >= 0 ? cur : (nendos[0] || "");
+    if (nendoFilter && nendoFilter !== "all" && nendos.indexOf(nendoFilter) < 0) {
+      nendoFilter = nendos[0] || "";
+    }
+    const fillKeys = nendoFilter && nendoFilter !== "all" ? [nendoFilter] : nendos;
+    const filled = MS.fillTuesdaySlots(saved, fillKeys);
+    const nextDate = MS.nextSessionDate(filled, today);
+    const all = filled.filter(r => matchQ(sessionBlob(r)));
+    const rows = all;
+    const hist = memberHistory();
+    const members = hist.members.filter(row => {
+      const m = row.member;
+      return matchQ(m.name + m.kana + m.company);
+    });
+    const unspoken = members.filter(r => !r.speech.length);
+    const range = nendoFilter && nendoFilter !== "all" ? MS.nendoRangeLabel(nendoFilter) : "";
+
+    $("app").innerHTML = `
+      <div class="toolbar">
+        <div class="seg" id="hist-seg">
+          <button type="button" data-tab="sessions" class="${tab==="sessions"?"on":""}">開催履歴</button>
+          <button type="button" data-tab="members" class="${tab==="members"?"on":""}">会員の登壇</button>
+        </div>
+        <label>検索 <input type="search" id="q" value="${MS.escapeHtml(q)}" placeholder="氏名・所属・日付"></label>
+        <button class="btn" type="button" id="btn-search">表示</button>
+        <button class="btn" type="button" id="btn-refresh" ${refreshing ? "disabled" : ""}>${refreshing ? "更新しています…" : "更新"}</button>
+        <span class="muted" id="hist-saved">${MS.escapeHtml(savedLabel())}</span>
+      </div>
+
+      <section ${tab==="sessions"?"":"hidden"}>
+        <div class="nendo-tabs" id="nendo-tabs">
+          ${nendos.map(k => `<button type="button" data-nendo="${k}" class="${nendoFilter===k?"on":""}">${MS.nendoLabel(k)}</button>`).join("")}
+          <button type="button" data-nendo="all" class="${nendoFilter==="all"?"on":""}">すべて</button>
+        </div>
+        <p class="muted">${rows.length} 枠${range ? `　${range}` : ""}　9月から順です。出欠は <a href="${STATS_URL}">MS受付の「履歴・集計」</a> から開けます。</p>
+        <div class="card" style="overflow:auto">
+          <table class="hist-table sessions">
+            <thead>
+              <tr>
+                <th rowspan="2">日付</th>
+                <th colspan="3" class="grp-kowa">講話者</th>
+                <th colspan="3" class="grp-speech">会員スピーチ</th>
+                <th rowspan="2"></th>
+              </tr>
+              <tr>
+                <th class="grp-kowa">氏名</th><th class="grp-kowa">呼び出し方</th><th class="grp-kowa">所属</th>
+                <th class="grp-speech">氏名</th><th class="grp-speech">所属</th><th class="grp-speech">役職</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.length ? sessionRowsHtml(rows, today, nendoFilter==="all", nextDate) : `<tr><td colspan="8" class="empty">この期の履歴はまだありません。「更新」で担当表から取り込めます。</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section ${tab==="members"?"":"hidden"}>
+        <div class="summary">
+          <div class="card"><div class="muted">名簿の人数</div><div class="num">${MS.meibo.length}</div></div>
+          <div class="card"><div class="muted">スピーチ未登壇</div><div class="num">${unspoken.length}</div></div>
+        </div>
+        <div class="card" style="overflow:auto">
+          <table class="hist-table">
+            <thead><tr><th>氏名</th><th>会社</th><th colspan="2" class="grp-speech">会員スピーチ</th><th colspan="2" class="grp-kowa">講話</th></tr>
+            <tr><th></th><th></th><th class="grp-speech">回数</th><th class="grp-speech">最終</th><th class="grp-kowa">回数</th><th class="grp-kowa">最終</th></tr></thead>
+            <tbody>
+              ${members.slice().sort((a, b) => {
+                if (!a.lastSpeech && b.lastSpeech) return -1;
+                if (a.lastSpeech && !b.lastSpeech) return 1;
+                return MS.cmpDate(a.lastSpeech || "9999", b.lastSpeech || "9999") || a.member.kana.localeCompare(b.member.kana, "ja");
+              }).map(row => `<tr>
+                <td>${MS.escapeHtml(row.member.name)}${row.member.role ? `<div class="muted">${MS.escapeHtml(row.member.role)}</div>` : ""}</td>
+                <td>${MS.escapeHtml(row.member.company)}</td>
+                <td class="grp-speech">${row.speech.length}</td>
+                <td class="grp-speech">${row.lastSpeech ? MS.jaDate(row.lastSpeech, false) : "未"}</td>
+                <td class="grp-kowa">${row.kowa.length}</td>
+                <td class="grp-kowa">${row.lastKowa ? MS.jaDate(row.lastKowa, false) : "—"}</td>
+              </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `;
+    $("hist-seg").onclick = e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      tab = btn.dataset.tab;
+      render();
+    };
+    const nendoEl = $("nendo-tabs");
+    if (nendoEl) nendoEl.onclick = e => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      nendoFilter = btn.dataset.nendo || "";
+      render();
+    };
+    const qEl = $("q");
+    qEl.oninput = e => { q = e.target.value; };
+    qEl.onkeydown = e => { if (e.key === "Enter") render(); };
+    $("btn-search").onclick = () => { q = qEl.value; render(); };
+    $("btn-refresh").onclick = () => {
+      if (refreshing) return;
+      refreshing = true;
+      render();
+      MS.refreshHistory().then(() => {
+        refreshing = false;
+        render();
+      }).catch(err => {
+        refreshing = false;
+        MS.roster.notice = err.message || "更新できませんでした。保存してある履歴を表示しています。";
+        render();
+      });
+    };
+  }
+
+  $("btn-logout").onclick = () => MS.logout();
+  MS.boot().then(render).catch(err => {
+    $("app").innerHTML = `<div class="card">${MS.escapeHtml(err.message || String(err))}</div>`;
+  });
+})();
+</script>
+</body>
+</html>

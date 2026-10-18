@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>チーム別出席 | 大阪みなと倫理法人会</title>
+<style>
+  :root{
+    --navy:#0f2f4f; --navy-2:#16436c; --gold:#c8a24a;
+    --bg:#eef1f6; --card:#fff; --ink:#16202e; --sub:#6b7686; --line:#e5e9f0; --muted:#b4bcc8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  header{background:linear-gradient(150deg,#0a2036,var(--navy) 55%,var(--navy-2));color:#fff;padding:18px 18px 16px}
+  .head-inner{max-width:1100px;margin:0 auto;padding:0 14px}
+  header{padding-left:0;padding-right:0}
+  header a{color:rgba(255,255,255,.75);text-decoration:none;font-size:.8rem}
+  header h1{margin:6px 0 0;font-size:1.3rem;letter-spacing:.06em}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 14px 60px}
+
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+  select,button,input{font:inherit;font-size:.9rem}
+  select,input{padding:7px 10px;border:1px solid #cfd6e0;border-radius:8px;background:#fff}
+  button{padding:7px 14px;border:0;border-radius:8px;background:var(--navy);color:#fff;cursor:pointer}
+  button.light{background:#fff;color:var(--navy);border:1px solid #cfd6e0}
+  .asof{margin-left:auto;font-size:.8rem;color:var(--sub)}
+
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .tab{padding:7px 12px;border-radius:20px;background:#fff;border:1px solid #dbe1ea;color:var(--ink);
+    text-decoration:none;font-size:.85rem;cursor:pointer}
+  .tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+  .card{background:var(--card);border:1px solid #e3e8ef;border-radius:14px;padding:14px;box-shadow:0 4px 14px rgba(20,45,80,.05)}
+  .title{font-size:1.1rem;font-weight:800;margin:0 0 2px}
+  .title small{font-weight:500;color:var(--sub);font-size:.82rem;margin-left:6px}
+  .msg{padding:22px 4px;color:var(--sub);text-align:center}
+  .warn{margin-top:10px;font-size:.78rem;color:#9a5b00;background:#fff6e6;border-radius:8px;padding:8px 10px}
+
+  .scroll{overflow-x:auto;margin-top:10px;-webkit-overflow-scrolling:touch}
+  table{border-collapse:separate;border-spacing:0;font-size:.85rem;white-space:nowrap}
+  th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:center;background:#fff}
+  thead th{background:#f5f7fa;font-weight:700;color:#3a4657;position:sticky;top:0}
+  th.name,td.name{position:sticky;left:0;z-index:1;text-align:left;border-right:1px solid var(--line)}
+  thead th.name{z-index:2}
+  td.role{text-align:left;color:var(--sub);font-size:.78rem}
+  td.na{color:var(--muted)}
+  td.full{color:#0b6b3a;font-weight:700}
+  td.zero{color:#b23a3a}
+  td.total,th.total{border-left:1px solid var(--line);font-weight:700}
+  tr.late td{background:#fbfcfd}
+  .moved{display:block;font-size:.7rem;color:var(--sub)}
+  tfoot td{background:#f8fafc;font-weight:700}
+  tfoot tr:first-child td{border-top:2px solid #cfd6e0}
+
+  .phrase{max-width:360px;margin:30px auto;text-align:center}
+  .phrase input{width:100%;margin:10px 0}
+</style>
+</head>
+<body>
+<script src="../portal-nav.js?v=20261018a" data-page="チーム別出席"></script>
+<header>
+  <div class="head-inner">
+    <h1>チーム別出席</h1>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <label>期：<select id="ki"></select></label>
+    <button class="light" id="reload">最新を読み込む</button>
+    <span class="asof" id="asof"></span>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="card" id="main"><div class="msg">読み込み中…</div></div>
+</div>
+
+<script src="../uketsuke/config.js"></script>
+<script src="team-table.js?v=20261008"></script>
+<script>
+  const API = UKETSUKE_CONFIG.api;
+  const STORE = "team-page:";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const monthLabel = m => Number(m.slice(5, 7)) + "月";
+
+  const params = new URLSearchParams(location.search);
+  let state = { ki: params.get("ki") || "", team: params.get("team") || "", teams: [] };
+
+  function phrase(){ return localStorage.getItem(STORE + "phrase") || ""; }
+
+  async function call(query, fresh){
+    const q = new URLSearchParams(Object.assign({ key: API.key, phrase: phrase() }, query));
+    if (fresh) q.set("fresh", "1");
+    const res = await fetch(API.endpoint + "?" + q.toString());
+    const data = await res.json();
+    if (!data.ok && data.error === "needPhrase") throw { needPhrase: true };
+    if (!data.ok) throw new Error(data.error || "読み込めませんでした");
+    return data;
+  }
+
+  function saved(key){ try { return JSON.parse(localStorage.getItem(STORE + key)); } catch(e){ return null; } }
+  function save(key, v){ try { localStorage.setItem(STORE + key, JSON.stringify(v)); } catch(e){} }
+
+  function showPhrase(){
+    $("tabs").innerHTML = "";
+    $("main").innerHTML = `<div class="phrase">
+      <p>このページを見るには合言葉が必要です。</p>
+      <input id="ph" type="password" autocomplete="current-password" placeholder="合言葉">
+      <button id="phok">開く</button></div>`;
+    $("phok").onclick = () => { localStorage.setItem(STORE + "phrase", $("ph").value.trim()); start(); };
+  }
+
+  function setUrl(){
+    const q = new URLSearchParams();
+    if (state.ki) q.set("ki", state.ki);
+    if (state.team) q.set("team", state.team);
+    history.replaceState(null, "", "?" + q.toString());
+  }
+
+  function renderKis(list){
+    $("ki").innerHTML = list.kis.map(k => `<option ${k === state.ki ? "selected" : ""}>${esc(k)}</option>`).join("");
+  }
+
+  function renderTabs(){
+    $("tabs").innerHTML = state.teams.map(t =>
+      `<a class="tab ${t.label === state.team || t.team === state.team ? "on" : ""}" data-team="${esc(t.team)}">${esc(t.team)}</a>`
+    ).join("");
+    document.querySelectorAll(".tab").forEach(a => a.onclick = () => { state.team = a.dataset.team; setUrl(); renderTabs(); showTeam(); });
+  }
+
+  function asOf(iso){
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")} 時点`;
+  }
+
+  function renderTeam(d){
+    $("main").innerHTML = teamTableHtml(d);
+    $("asof").textContent = asOf(d.computedAt);
+  }
+
+  /* 期ごとに全チーム分を1回だけ受け取る。タブの切り替えは手元のデータで表示する */
+  function apply(all, fromServer){
+    state.all = all;
+    state.ki = all.ki;
+    state.teams = all.teams;
+    const hit = state.teams.find(t => t.label === state.team || t.team === state.team);
+    if (hit) state.team = hit.team;
+    else if (fromServer || !state.team) state.team = state.teams.length ? state.teams[0].team : "";
+    renderKis(all);
+    renderTabs();
+    setUrl();
+    showTeam();
+  }
+
+  function showTeam(){
+    const all = state.all;
+    const d = all && all.results[state.team];
+    if (!d) { $("main").innerHTML = `<div class="msg">この期のチームが名簿にありません。</div>`; return; }
+    renderTeam(Object.assign({ computedAt: all.computedAt }, d));
+  }
+
+  let seq = 0;
+  async function load(fresh){
+    const my = ++seq;
+    const old = state.ki ? saved("all:" + state.ki) : null;
+    if (old) apply(old);
+    else { $("main").innerHTML = `<div class="msg">集計中…（数秒かかることがあります）</div>`; $("asof").textContent = ""; }
+    try {
+      const all = await call(state.ki ? { action: "teamAll", ki: state.ki } : { action: "teamAll" }, fresh);
+      if (my !== seq) return;
+      save("all:" + all.ki, all);
+      apply(all, true);
+    } catch (e) {
+      if (my !== seq) return;
+      if (e.needPhrase) return showPhrase();
+      if (old) $("asof").textContent = asOf(old.computedAt) + "（最新を読み込めませんでした）";
+      else $("main").innerHTML = `<div class="msg">読み込めませんでした：${esc(e.message || e)}</div>`;
+    }
+  }
+  function start(fresh){ load(fresh); }
+
+  $("ki").onchange = () => { state.ki = $("ki").value; state.team = ""; load(false); };
+  $("reload").onclick = () => load(true);
+  load(false);
+</script>
+</body>
+</html>

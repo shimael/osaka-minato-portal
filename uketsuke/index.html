@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>モーニングセミナー受付 | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20261006a">
+</head>
+<body>
+<header class="topbar">
+  <h1>モーニングセミナー受付</h1>
+  <div class="meta">
+    <span class="who">受付担当：<strong id="who-name"></strong>
+      <button type="button" id="btn-logout">切り替え</button>
+    </span>
+    <button type="button" id="btn-reload-now">更新</button>
+    <span id="sync-badge" class="sync-badge" hidden></span>
+    <span id="live-badge" class="live-badge" hidden></span>
+  </div>
+</header>
+<script src="../portal-nav.js?v=20261018a" data-section="uketsuke" data-tab="entry"></script>
+
+<div class="wrap">
+  <div id="store-mode" class="banner" hidden></div>
+
+  <section id="view-entry">
+    <!-- 受付する回：カード形式ではなく、細いバーで現在の状態だけを示す -->
+    <div class="session-bar" id="session-bar">
+      <div class="session-bar-info">
+        <span class="session-bar-dot" id="session-bar-dot"></span>
+        <span class="session-bar-text" id="session-bar-text"></span>
+      </div>
+      <div class="session-bar-actions" id="session-bar-actions"></div>
+    </div>
+
+    <!-- 名簿は事前に読み込んであり、電波がなくても候補が出る。
+         シート側で入退会があったときだけ「名簿を更新」を押してもらう。 -->
+    <div class="roster-bar" id="roster-bar" hidden>
+      <span class="roster-bar-info" id="roster-bar-text"></span>
+      <span class="roster-bar-actions">
+        <span class="roster-msg" id="roster-msg"></span>
+        <button type="button" class="btn small ghost" id="btn-roster-refresh">名簿を更新</button>
+      </span>
+    </div>
+
+    <div id="entry-body">
+    <div class="card primary">
+      <div class="primary-kicker" id="entry-kicker">ここで受付します</div>
+      <div class="search-box">
+        <input id="q" type="text" placeholder="ふりがなや名前を入れてください（例：さとう）" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <div id="suggest" class="suggest" hidden></div>
+      </div>
+
+      <div id="picked" hidden></div>
+
+      <div id="attend-block" hidden>
+        <div class="attend-row" id="attend-row"></div>
+        <div class="entered-when">
+          <span class="lbl">入力日時（後から直したときも、ここに残ります）</span>
+          <div class="entered-when-fields">
+            <div class="date-wrap">
+              <span class="date-face" aria-hidden="true"></span>
+              <input id="entry-time-date" type="date">
+            </div>
+            <input id="entry-time-hm" type="time">
+          </div>
+        </div>
+        <p class="save-row">
+          <button type="button" class="btn" id="btn-save">受付に登録する</button>
+        </p>
+      </div>
+    </div>
+
+    <details class="card fold" id="fold-tankai">
+      <summary>他単会の方を登録する</summary>
+      <div class="fold-body">
+        <p class="fold-lead">名簿にない、他の倫理法人会の会員の方です。</p>
+        <div id="guest-fields" class="guest-fields">
+          <div class="field"><span class="lbl">氏名</span><input id="g-name" placeholder="例：山田　太郎" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="field"><span class="lbl">ふりがな</span><input id="g-kana" placeholder="例：やまだ　たろう" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+          <div class="field"><span class="lbl">単会名</span><input id="g-tankai" placeholder="例：大阪◯◯"></div>
+          <div class="field"><span class="lbl">性別</span>
+            <div class="seg" id="g-gender">
+              <label class="female"><input type="radio" name="g-gender" value="女性">女性</label>
+              <label><input type="radio" name="g-gender" value="男性">男性</label>
+            </div>
+          </div>
+        </div>
+        <div class="attend-row" id="tankai-attend-row"></div>
+        <div class="entered-when">
+          <span class="lbl">入力日時（後から直したときも、ここに残ります）</span>
+          <div class="entered-when-fields">
+            <div class="date-wrap">
+              <span class="date-face" aria-hidden="true"></span>
+              <input id="tankai-time-date" type="date">
+            </div>
+            <input id="tankai-time-hm" type="time">
+          </div>
+        </div>
+        <p class="save-row">
+          <button type="button" class="btn" id="btn-tankai-save">受付に登録する</button>
+        </p>
+      </div>
+    </details>
+
+    <div class="card">
+      <details class="inner-fold" id="fold-guest">
+        <summary>ゲストを追加する</summary>
+        <div class="fold-body">
+          <div class="guest-form">
+            <div class="field wide"><span class="lbl">名前</span><input id="gu-name" placeholder="例：山田　太郎" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+            <div class="field wide"><span class="lbl">ふりがな（ひらがな）</span><input id="gu-kana" placeholder="例：やまだ　たろう" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+            <div class="field wide"><span class="lbl">性別</span>
+              <div class="seg" id="gu-gender">
+                <label class="female"><input type="radio" name="gu-gender" value="女性">女性</label>
+                <label><input type="radio" name="gu-gender" value="男性">男性</label>
+              </div>
+            </div>
+            <div class="field wide"><span class="lbl">紹介者</span><input id="gu-referrer" placeholder="例：佐藤　花子" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+            <div class="field"><span class="lbl">アテンド1</span><input id="gu-attendant" placeholder="例：田中　一郎" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+            <div class="field"><span class="lbl">アテンド2</span><input id="gu-attendant2" placeholder="例：鈴木　次郎" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+            <div class="field wide"><span class="lbl">備考欄</span><input id="gu-note" placeholder="任意" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+          </div>
+          <p class="save-row"><button type="button" class="btn" id="btn-guest-add">ゲストを追加する</button></p>
+        </div>
+      </details>
+      <h3 class="card-head guest-list-head"><span><span id="guest-list-title">今日のゲスト</span>（<span id="guest-count">0</span> 名）</span></h3>
+      <div id="guest-list"><p style="color:#6b7686; font-size:.86rem">まだゲストの登録がありません。</p></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-head"><span><span id="today-list-title">今日の受付一覧</span>（<span id="today-count">0</span> 名）</span></h2>
+      <div id="today-list"><p style="color:#6b7686; font-size:.86rem">まだ受付がありません。</p></div>
+    </div>
+    </div><!-- /#entry-body -->
+  </section>
+</div>
+
+<div class="overlay" id="auth-overlay" hidden>
+  <form class="auth-card" id="auth-form">
+    <h2>受付担当の方が使います</h2>
+    <p id="auth-desc">記録に残すお名前を入れてください。合言葉の入力は不要です。</p>
+    <div class="field">
+      <span class="lbl">お名前</span>
+      <input id="auth-name" autocomplete="name" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+    </div>
+    <p class="err" id="auth-error"></p>
+    <button class="btn primary" type="submit">入る</button>
+  </form>
+</div>
+
+<div class="overlay" id="session-overlay" hidden>
+  <div class="auth-card" id="session-popup-card">
+    <h2 id="session-popup-title">次の受付を開始する</h2>
+    <p class="sub" id="session-popup-lead" style="margin:0 0 12px; color:var(--sub)">受付中の回は、同時に1つだけです。ほかに受付中のものがあるときは、先にそちらを締め切ります。</p>
+    <div class="session-fields">
+      <div class="field" style="grid-column:1/-1">
+        <span class="lbl">日付</span>
+        <div class="ymd-pick">
+          <select id="pop-y" aria-label="年"></select>
+          <select id="pop-m" aria-label="月"></select>
+          <select id="pop-d" aria-label="日"></select>
+        </div>
+        <span class="ymd-note" id="pop-ymd-note"></span>
+      </div>
+      <div class="field">
+        <span class="lbl">イベント名</span>
+        <select id="pop-session-event-select">
+          <option value="モーニングセミナー">モーニングセミナー</option>
+          <option value="__custom__">その他（自由入力）</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" id="pop-session-event-custom-wrap" hidden style="margin-top:8px">
+      <span class="lbl">イベント名（自由入力）</span>
+      <input id="pop-session-event-custom" placeholder="例：新年例会" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <div id="pop-attend-wrap" hidden style="margin-top:12px">
+      <span class="lbl">受付の項目（最大3つ。空欄は使いません）</span>
+      <div class="session-fields" style="margin-top:6px">
+        <div class="field"><span class="lbl">項目1</span><input id="pop-attend-1" value="参加" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="field"><span class="lbl">項目2</span><input id="pop-attend-2" placeholder="例：懇親会" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="field" style="grid-column:1/-1"><span class="lbl">項目3</span><input id="pop-attend-3" placeholder="任意" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+      </div>
+    </div>
+    <p style="margin-top:18px; display:flex; gap:8px; justify-content:flex-end">
+      <button type="button" class="btn ghost" id="btn-session-popup-cancel">キャンセル</button>
+      <button type="button" class="btn" id="btn-session-popup-apply">開始する</button>
+    </p>
+  </div>
+</div>
+
+<div class="overlay" id="stale-overlay" hidden>
+  <div class="auth-card">
+    <h2>前の回が、まだ受付中です</h2>
+    <p id="stale-lead" style="margin:0 0 6px"></p>
+    <p class="sub" style="margin:0 0 16px; color:var(--sub)">今日の受付なら、前の回を締め切ってから、新しく始めてください。前の回のまま入力すると、今日の出席が前の日付で記録されます。</p>
+    <p style="display:flex; flex-direction:column; gap:8px">
+      <button type="button" class="btn" id="btn-stale-new">前の回を締め切って、今日の受付を始める</button>
+      <button type="button" class="btn ghost" id="btn-stale-keep"></button>
+    </p>
+  </div>
+</div>
+
+<div class="overlay" id="edit-overlay" hidden>
+  <div class="auth-card edit-card">
+    <h2 id="edit-title">受付内容の修正</h2>
+    <div id="edit-body"></div>
+    <div class="edit-actions">
+      <button type="button" class="btn danger" id="edit-delete">この受付を取り消す</button>
+      <button type="button" class="btn ghost" id="edit-close">閉じる</button>
+      <button type="button" class="btn" id="edit-save">保存する</button>
+    </div>
+  </div>
+</div>
+
+<script src="members-data.js?v=20261013a"></script>
+<script src="config.js?v=20261006a"></script>
+<script src="app.js?v=20261007a"></script>
+<script>
+(function () {
+  "use strict";
+  const K = window.UKETSUKE;
+  const U = K.U;
+
+  /* ---------- 同期状況バッジ ---------- */
+  function updateSyncBadge(count, err) {
+    const el = document.getElementById("sync-badge");
+    if (err) {
+      el.hidden = false;
+      el.className = "sync-badge err";
+      el.textContent = err;
+    } else if (count > 0) {
+      el.hidden = false;
+      el.className = "sync-badge pending";
+      el.textContent = "同期待ち：" + count + "件（送っています）";
+    } else {
+      el.hidden = true;
+    }
+  }
+  K.onSyncChange(updateSyncBadge);
+  updateSyncBadge(K.pendingCount(), U.syncError);
+
+  /* ---------- 名簿（事前読み込み＋更新ボタン） ----------
+   * 受付中に通信が切れても候補出しが止まらないよう、名簿は先に読み込んだものを
+   * 使い続ける。シートを取りに行くのは「名簿を更新」を押したときだけ。 */
+  function fmtFetched(iso) {
+    if (!iso) return "取得日 不明";
+    const d = new Date(iso);
+    if (isNaN(d)) return "取得日 " + String(iso).slice(0, 10);
+    return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日 取得";
+  }
+  function renderRosterBar() {
+    const bar = document.getElementById("roster-bar");
+    bar.hidden = false;
+    const stale = K.membersAreStale();
+    bar.classList.toggle("stale", stale);
+    document.getElementById("roster-bar-text").textContent =
+      "名簿 " + U.members.length + "名（" + fmtFetched(U.membersFetchedAt) + "）"
+      + (stale ? "　入退会があれば更新してください" : "");
+    document.getElementById("btn-roster-refresh").hidden = !(UKETSUKE_CONFIG.membersCsvUrl || "").trim();
+  }
+  document.getElementById("btn-roster-refresh").addEventListener("click", async () => {
+    const btn = document.getElementById("btn-roster-refresh");
+    const msg = document.getElementById("roster-msg");
+    btn.disabled = true;
+    btn.textContent = "取得中…";
+    msg.className = "roster-msg";
+    msg.textContent = "";
+    try {
+      const n = await K.refreshMembers();
+      msg.className = "roster-msg ok";
+      msg.textContent = n + "名を取り込みました。";
+    } catch (e) {
+      msg.className = "roster-msg err";
+      msg.textContent = e.message || "更新できませんでした。";
+    }
+    btn.disabled = false;
+    btn.textContent = "名簿を更新";
+    renderRosterBar();
+  });
+
+  /* ---------- 認証ゲート ---------- */
+  function showAuthGate() {
+    const el = document.getElementById("auth-overlay");
+    document.getElementById("auth-desc").textContent = K.endpointReady()
+      ? "記録に残すお名前を入れてください。合言葉の入力は不要です。"
+      : "スプレッドシート連携がまだ設定されていません。この端末にだけ保存されます。お名前を入れてください。";
+    el.hidden = false;
+  }
+  function hideAuthGate() { document.getElementById("auth-overlay").hidden = true; }
+
+  document.getElementById("auth-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("auth-name").value.trim();
+    const errEl = document.getElementById("auth-error");
+    errEl.textContent = "";
+    if (!name) { errEl.textContent = "お名前を入れてください。"; return; }
+    U.who = { name, key: K.currentKey() };
+    K.saveAuth();
+    hideAuthGate();
+    document.getElementById("who-name").textContent = name;
+    await boot();
+  });
+
+  document.getElementById("btn-logout").addEventListener("click", () => {
+    U.who = { name: "", key: "" };
+    K.saveAuth();
+    showAuthGate();
+  });
+
+  /* ---------- 受付する回（日付＋イベント名） ---------- */
+  // 「受付する回」は、常時表示する大きなカードではなく、上部の細いバーに
+  // 現在の状態（受付中／締切済み）だけを出す。次の回を始める操作は
+  // 別のポップアップに切り出してある。受付中は同時に1つだけ。
+
+  function getPopupEventValue() {
+    const sel = document.getElementById("pop-session-event-select").value;
+    if (sel === "__custom__") {
+      return document.getElementById("pop-session-event-custom").value.trim() || K.DEFAULT_EVENT;
+    }
+    return sel;
+  }
+  function setPopupEventFields(event) {
+    const sel = document.getElementById("pop-session-event-select");
+    const customWrap = document.getElementById("pop-session-event-custom-wrap");
+    const attendWrap = document.getElementById("pop-attend-wrap");
+    if (!event || event === K.DEFAULT_EVENT) {
+      sel.value = K.DEFAULT_EVENT;
+      customWrap.hidden = true;
+      attendWrap.hidden = true;
+    } else {
+      sel.value = "__custom__";
+      document.getElementById("pop-session-event-custom").value = event;
+      customWrap.hidden = false;
+      attendWrap.hidden = false;
+    }
+  }
+  let popupBackfillOnly = false;
+
+  function shiftYmd(ymd, days) {
+    const p = String(ymd || "").split("-").map(Number);
+    const dt = new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
+    dt.setDate(dt.getDate() + days);
+    const pad = n => String(n).padStart(2, "0");
+    return dt.getFullYear() + "-" + pad(dt.getMonth() + 1) + "-" + pad(dt.getDate());
+  }
+  function isPastDate(date) {
+    return !!date && date < K.todayYmd();
+  }
+  function pad2(n) { return String(n).padStart(2, "0"); }
+  function popupDateValue() {
+    const y = document.getElementById("pop-y").value;
+    const m = document.getElementById("pop-m").value;
+    const d = document.getElementById("pop-d").value;
+    if (!y || !m || !d) return "";
+    return y + "-" + pad2(m) + "-" + pad2(d);
+  }
+  function rebuildPopupDays(keepDay) {
+    const y = Number(document.getElementById("pop-y").value);
+    const m = Number(document.getElementById("pop-m").value);
+    const daySel = document.getElementById("pop-d");
+    const max = new Date(y, m, 0).getDate();
+    const day = Math.min(keepDay || Number(daySel.value) || 1, max);
+    let html = "";
+    for (let d = 1; d <= max; d++) html += `<option value="${d}">${d}日</option>`;
+    daySel.innerHTML = html;
+    daySel.value = String(day);
+  }
+  function ensurePopupDateSelects() {
+    const yearSel = document.getElementById("pop-y");
+    if (yearSel.options.length) return;
+    const nowY = Number(K.todayYmd().slice(0, 4));
+    let html = "";
+    for (let y = nowY - 3; y <= nowY + 1; y++) html += `<option value="${y}">${y}年</option>`;
+    yearSel.innerHTML = html;
+    const monthSel = document.getElementById("pop-m");
+    html = "";
+    for (let m = 1; m <= 12; m++) html += `<option value="${m}">${m}月</option>`;
+    monthSel.innerHTML = html;
+  }
+  function setPopupDate(ymd) {
+    ensurePopupDateSelects();
+    const p = String(ymd || K.todayYmd()).split("-").map(Number);
+    document.getElementById("pop-y").value = String(p[0]);
+    document.getElementById("pop-m").value = String(p[1]);
+    rebuildPopupDays(p[2]);
+  }
+  function refreshPopupMode() {
+    const date = popupDateValue();
+    const note = document.getElementById("pop-ymd-note");
+    if (note) note.textContent = date ? K.jaDate(date) : "";
+    const past = isPastDate(date);
+    const existing = date ? K.findSessionInfo(date, getPopupEventValue()) : null;
+    const title = document.getElementById("session-popup-title");
+    const lead = document.getElementById("session-popup-lead");
+    const apply = document.getElementById("btn-session-popup-apply");
+    if (past) {
+      title.textContent = "過去の日付で入力する";
+      lead.textContent = existing
+        ? "この日付の受付はすでにあるので、開いて追加します。いま受付中の回はそのままです。"
+        : "紙で受け付けた分を、あとから入れられます。いま受付中の回は締め切りません。会長が見るゲスト情報も、いま受付中の回のままです。";
+      apply.textContent = existing ? "開いて入力する" : "この日付で入力を始める";
+    } else {
+      title.textContent = "次の受付を開始する";
+      lead.textContent = "受付中の回は、同時に1つだけです。ほかに受付中のものがあるときは、先にそちらを締め切ります。";
+      apply.textContent = "開始する";
+    }
+  }
+  function openSessionPopup(opts) {
+    opts = opts || {};
+    popupBackfillOnly = !!opts.backfill;
+    setPopupDate(popupBackfillOnly ? shiftYmd(K.todayYmd(), -1) : K.todayYmd());
+    document.getElementById("pop-attend-1").value = "参加";
+    document.getElementById("pop-attend-2").value = "";
+    document.getElementById("pop-attend-3").value = "";
+    setPopupEventFields(K.DEFAULT_EVENT);
+    refreshPopupMode();
+    document.getElementById("session-overlay").hidden = false;
+  }
+  function closeSessionPopup() { document.getElementById("session-overlay").hidden = true; }
+
+  document.getElementById("pop-session-event-select").addEventListener("change", () => {
+    const sel = document.getElementById("pop-session-event-select").value;
+    document.getElementById("pop-session-event-custom-wrap").hidden = sel !== "__custom__";
+    document.getElementById("pop-attend-wrap").hidden = sel !== "__custom__";
+    if (sel === "__custom__") document.getElementById("pop-session-event-custom").focus();
+    refreshPopupMode();
+  });
+  document.getElementById("pop-session-event-custom").addEventListener("input", refreshPopupMode);
+  ["pop-y", "pop-m", "pop-d"].forEach(id => {
+    document.getElementById(id).addEventListener("change", () => {
+      if (id !== "pop-d") rebuildPopupDays();
+      refreshPopupMode();
+    });
+  });
+  document.getElementById("btn-session-popup-cancel").addEventListener("click", closeSessionPopup);
+  document.getElementById("btn-session-popup-apply").addEventListener("click", async () => {
+    const btn = document.getElementById("btn-session-popup-apply");
+    if (btn.disabled) return;
+    const date = popupDateValue() || K.todayYmd();
+    if (popupBackfillOnly && !isPastDate(date)) {
+      alert("過去の日付を選んでください。今日以降の受付は「次の受付を開始する」から始めます。");
+      return;
+    }
+    btn.disabled = true;
+    try {
+      const event = getPopupEventValue();
+      const started = await beginSession(date, event, popupAttendLabels(event));
+      if (started) closeSessionPopup();
+    } finally {
+      btn.disabled = false;
+      refreshPopupMode();
+    }
+  });
+  function popupAttendLabels(event) {
+    if (event === K.DEFAULT_EVENT) return ["朝礼", "モーニングセミナー", "シェア会"];
+    return [
+      document.getElementById("pop-attend-1").value.trim() || "参加",
+      document.getElementById("pop-attend-2").value.trim(),
+      document.getElementById("pop-attend-3").value.trim()
+    ];
+  }
+  function attItems() { return K.currentAttendance(); }
+  function attShort(a) { return K.attendShort(a, U.event); }
+
+  function sessionLabel(date, event) {
+    return event + "／" + K.jaDate(date);
+  }
+  function statsUrl(date, event) {
+    return "stats.html?date=" + encodeURIComponent(date) + "&event=" + encodeURIComponent(event || K.DEFAULT_EVENT);
+  }
+
+  /* 過去の日付は締切済みのまま開き、いま受付中の回は触らない。
+     今日以降は今までどおり、受付中は同時に1つ。 */
+  async function beginSession(date, event, labels) {
+    if (isPastDate(date)) {
+      const existing = K.findSessionInfo(date, event);
+      if (existing) {
+        await switchSession(date, event, { viaHistory: existing.status !== "受付中" });
+        reloadFromServer();
+        return true;
+      }
+      const result = await K.backfillSession(date, event, labels);
+      if (!result || !result.ok) {
+        if (result && result.error === "unknown op") {
+          alert("過去の日付の受付を新しく作るには、受付用スプレッドシートのスクリプトを最新にしてから、もう一度試してください。\n\nすでに履歴にある回は、「履歴・集計」から開いて追加できます。いま受付中の回は、この操作では締め切りません。");
+        } else if (result && result.error === "unauthorized") {
+          alert("スプレッドシートに接続できないため、過去の日付の受付を作れませんでした。");
+        } else {
+          alert("つながらなかったため、過去の日付の受付を作れませんでした。通信を確認して、もう一度試してください。いま受付中の回はそのままです。");
+        }
+        return false;
+      }
+      await switchSession(date, event, { viaHistory: result.status !== "受付中" });
+      reloadFromServer();
+      return true;
+    }
+    const others = K.findOpenSessions().filter(s => !(s.date === date && s.event === event));
+    if (others.length) {
+      const names = others.map(s => sessionLabel(s.date, s.event)).join("、");
+      if (!confirm("今受付中の「" + names + "」を締め切ります。よろしいですか？")) return false;
+      others.forEach(s => {
+        const items = K.attendanceForSession(s, s.event);
+        K.closeSessionLocal(s.date, s.event, true, K.attendLabelsFromItems(items));
+      });
+    }
+    K.closeSessionLocal(date, event, false, labels);
+    await K.flushOutbox();
+    await switchSession(date, event, {});
+    reloadFromServer();
+    return true;
+  }
+
+  async function closeCurrentSession() {
+    if (!confirm("この受付を締め切りますか？\n\n締め切ると、この回の集計が見られるようになります。あとから直すときは「履歴・集計」から開きます。")) return;
+    K.closeSessionLocal(U.date, U.event, true, K.attendLabelsFromItems(K.currentAttendance()));
+    await K.flushOutbox();
+    await switchSession(U.date, U.event, {});
+  }
+
+  // バーの内容（テキスト・色・ボタン）を今の状態に合わせて描き直す
+  function renderSessionBar(closed, viaHistory) {
+    const bar = document.getElementById("session-bar");
+    const dot = document.getElementById("session-bar-dot");
+    const text = document.getElementById("session-bar-text");
+    const actions = document.getElementById("session-bar-actions");
+    const label = sessionLabel(U.date, U.event);
+    const extras = K.findOpenSessions().filter(s => !(s.date === U.date && s.event === U.event));
+
+    bar.classList.toggle("closed", closed && !viaHistory);
+    bar.classList.toggle("editing", closed && viaHistory);
+    dot.classList.toggle("closed", closed);
+
+    if (!closed) {
+      text.innerHTML = `受付中：<strong>${esc(label)}</strong>` + (extras.length
+        ? `<span class="session-warn">ほかに受付中：${esc(extras.map(s => sessionLabel(s.date, s.event)).join("、"))}。同時に開けるのは1つだけです。</span>`
+        : "");
+      actions.innerHTML = `
+        <button type="button" class="btn small ghost" id="btn-session-backfill">過去の日付を入力</button>
+        <button type="button" class="btn small ghost" id="btn-session-close">締め切る</button>`;
+      document.getElementById("btn-session-backfill").addEventListener("click", () => openSessionPopup({ backfill: true }));
+      document.getElementById("btn-session-close").addEventListener("click", closeCurrentSession);
+    } else if (viaHistory) {
+      const openOther = K.findOpenSessions().filter(s => !(s.date === U.date && s.event === U.event));
+      text.innerHTML = `<span class="chip">締切済み</span> <strong>${esc(label)}</strong> を修正中`
+        + `<span class="session-warn">締め切った回です。新しい受付はここに入れず、「修正を終える」から始めてください。</span>`;
+      actions.innerHTML = (openOther.length
+        ? `<button type="button" class="linklike" id="btn-session-back">受付中の回にもどる</button>`
+        : "")
+        + `<a class="btn small ghost" href="${esc(statsUrl(U.date, U.event))}">この回の集計を見る</a>`
+        + `<button type="button" class="btn small" id="btn-session-done">修正を終える</button>`;
+      if (openOther.length) {
+        document.getElementById("btn-session-back").addEventListener("click", async () => {
+          const s = openOther[0];
+          await switchSession(s.date, s.event, {});
+        });
+      }
+      document.getElementById("btn-session-done").addEventListener("click", async () => {
+        const s = K.pickCurrentSession();
+        await switchSession(s.date, s.event, {});
+      });
+    } else {
+      text.innerHTML = `<span class="chip">締切済み</span> ${esc(label)} は締め切りました`
+        + `<span class="session-warn">いまは受付中の回がありません。新しく受け付けるときは「次の受付を開始する」を押してください。</span>`;
+      actions.innerHTML = `
+        <a class="btn small ghost" href="${esc(statsUrl(U.date, U.event))}">この回の集計を見る</a>
+        <button type="button" class="btn small ghost" id="btn-session-backfill">過去の日付を入力</button>
+        <button type="button" class="btn small" id="btn-session-start">次の受付を開始する</button>`;
+      document.getElementById("btn-session-backfill").addEventListener("click", () => openSessionPopup({ backfill: true }));
+      document.getElementById("btn-session-start").addEventListener("click", () => openSessionPopup());
+    }
+  }
+
+  let viewingClosedViaHistory = false;
+  let leavingConfirmed = false;
+
+  /* 締め切った回の修正は、ページを離れるときに必ず終わらせる。
+     受付中の回は「締め切る」を押すまで開いたままなので、確認しない。 */
+  function editingClosedSession() {
+    return viewingClosedViaHistory && U.sessionStatus === "締切済み";
+  }
+  function confirmLeaveEditing() {
+    if (!editingClosedSession()) return true;
+    const ok = confirm(K.jaDateShort(U.date) + "分（締め切った回）の修正は完了しましたか？\n\n"
+      + "「OK」で修正を終えて、締め切った状態に戻して移動します。\n"
+      + "まだ修正するときは「キャンセル」を押してください。");
+    if (ok) leavingConfirmed = true;
+    return ok;
+  }
+  document.addEventListener("click", e => {
+    const a = e.target.closest("a[href]");
+    if (a && !confirmLeaveEditing()) e.preventDefault();
+  }, true);
+  window.addEventListener("beforeunload", e => {
+    if (leavingConfirmed || !editingClosedSession()) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+
+  function switchSession(date, event, opts) {
+    opts = opts || {};
+    viewingClosedViaHistory = !!opts.viaHistory;
+    U.date = date;
+    U.event = event || K.DEFAULT_EVENT;
+
+    if (!(U.sessions && U.sessions.length)) K.sessionsFromLocal();
+    const info = K.findSessionInfo(U.date, U.event);
+    const closed = !!(info && info.status === "締切済み");
+    U.sessionStatus = info ? info.status : "";
+    U.attendance = K.attendanceForSession(info, U.event);
+    K.rememberSession(U.date, U.event);
+
+    renderSessionBar(closed, !!opts.viaHistory);
+    document.getElementById("entry-kicker").innerHTML =
+      `<span class="kicker-date">${esc(K.jaDate(U.date))}</span>ここで受付します`;
+    document.getElementById("entry-body").hidden = closed && !opts.viaHistory;
+    if (closed && !opts.viaHistory) {
+      return;
+    }
+
+    resetEntry();
+    const all = K.recordsFromLocal(U.date, U.event);
+    U.records = all.filter(r => r.type !== "guest");
+    U.guests = all.filter(r => r.type === "guest");
+    updateSyncBadge(K.pendingCount(), U.syncError);
+    renderTodayList();
+    renderGuestList();
+  }
+
+  /* ---------- 更新（押したときだけスプレッドシートを読む） ---------- */
+  let reloading = false;
+
+  function markSynced() {
+    const el = document.getElementById("live-badge");
+    if (!K.endpointReady()) { el.hidden = true; return; }
+    el.hidden = false;
+    el.textContent = "最終更新 " + K.nowHm();
+  }
+
+  let reloadAgain = false;
+
+  async function reloadFromServer() {
+    if (!K.endpointReady()) return;
+    if (reloading) { reloadAgain = true; return; }
+    reloading = true;
+    const btn = document.getElementById("btn-reload-now");
+    btn.disabled = true;
+    btn.textContent = "更新中…";
+    try {
+      const sessions = await K.fetchSessions();
+      if (sessions && !sessions._stale) {
+        const info = K.findSessionInfo(U.date, U.event);
+        const closed = !!(info && info.status === "締切済み");
+        // 別の端末で次の受付が始まっていれば、締め切った画面からそちらへ移る
+        const open = K.findOpenSessions();
+        if (closed && !viewingClosedViaHistory && open.length) {
+          switchSession(open[0].date, open[0].event, {});
+        } else {
+          U.sessionStatus = info ? info.status : U.sessionStatus;
+          renderSessionBar(closed, viewingClosedViaHistory);
+          document.getElementById("entry-body").hidden = closed && !viewingClosedViaHistory;
+        }
+      }
+      const all = await K.fetchRecords(U.date, U.event);
+      if (!all || all._stale) return;
+      U.records = all.filter(r => r.type !== "guest");
+      U.guests = all.filter(r => r.type === "guest");
+      if (!document.getElementById("entry-body").hidden) {
+        renderTodayList();
+        renderGuestList();
+      }
+      markSynced();
+    } catch (e) { /* 取れなければ今の表示のまま */ }
+    finally {
+      reloading = false;
+      btn.disabled = false;
+      btn.textContent = "更新";
+      checkStaleOpen();
+      if (reloadAgain) { reloadAgain = false; reloadFromServer(); }
+    }
+  }
+
+  document.getElementById("btn-reload-now").addEventListener("click", reloadFromServer);
+  // iPad を開いたまま置いておくことがあるので、画面に戻ったときも読み直す
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && !K.needsAuthGate()) reloadFromServer();
+  });
+
+  /* ---------- 前の回が受付中のまま残っているとき ----------
+     締め忘れたまま次の週に開くと、今日の出席が前の日付で記録されてしまう。 */
+  let staleKeptFor = "";
+  function checkStaleOpen() {
+    const overlay = document.getElementById("stale-overlay");
+    const key = U.date + "__" + U.event;
+    const stale = U.sessionStatus === "受付中" && isPastDate(U.date) && staleKeptFor !== key;
+    if (!stale) { overlay.hidden = true; return; }
+    document.getElementById("stale-lead").innerHTML =
+      `いま受付中なのは <strong>${esc(sessionLabel(U.date, U.event))}</strong> です。<br>今日は ${esc(K.jaDate(K.todayYmd()))} です。`;
+    document.getElementById("btn-stale-keep").textContent = K.jaDateShort(U.date) + "の続きを入力する";
+    overlay.hidden = false;
+  }
+  document.getElementById("btn-stale-keep").addEventListener("click", () => {
+    staleKeptFor = U.date + "__" + U.event;
+    document.getElementById("stale-overlay").hidden = true;
+  });
+  document.getElementById("btn-stale-new").addEventListener("click", async () => {
+    document.getElementById("stale-overlay").hidden = true;
+    K.closeSessionLocal(U.date, U.event, true, K.attendLabelsFromItems(K.currentAttendance()));
+    await switchSession(U.date, U.event, {});
+    openSessionPopup();
+    K.flushOutbox();
+  });
+
+  /* ---------- 受付：検索 ---------- */
+  const qEl = document.getElementById("q");
+  const suggestEl = document.getElementById("suggest");
+
+  // 変換候補（IME）は入力欄の「下」に出る仕様なので、自前の候補はできる限り
+  // 「上」に出してかぶらないようにする。上の余白が足りないときだけ下にする。
+  // スマホはソフトキーボードで表示領域が縮むので、window ではなく
+  // visualViewport（実際に見えている範囲）を基準にする。
+  function positionSuggest() {
+    const rect = qEl.getBoundingClientRect();
+    const vv = window.visualViewport;
+    const vTop = vv ? vv.offsetTop : 0;
+    const vHeight = vv ? vv.height : window.innerHeight;
+    const spaceAbove = rect.top - vTop;
+    const spaceBelow = (vTop + vHeight) - rect.bottom;
+    if (spaceAbove >= 160) {
+      suggestEl.classList.add("above");
+      suggestEl.classList.remove("below");
+      suggestEl.style.maxHeight = Math.min(280, spaceAbove - 12) + "px";
+    } else {
+      suggestEl.classList.add("below");
+      suggestEl.classList.remove("above");
+      suggestEl.style.maxHeight = Math.min(280, Math.max(120, spaceBelow - 12)) + "px";
+    }
+  }
+
+  qEl.addEventListener("input", () => {
+    const q = qEl.value;
+    if (!q.trim()) { suggestEl.hidden = true; return; }
+    const hits = K.searchMembers(q);
+    positionSuggest();
+    if (!hits.length) {
+      suggestEl.innerHTML = '<div class="empty">候補がありません。他単会の方はこの下から、ゲストは「ゲスト受付」から登録してください。</div>';
+      suggestEl.hidden = false;
+      return;
+    }
+    // 他の受付担当がすでに登録している人は、その場で分かるようにしておく。
+    suggestEl.innerHTML = hits.map((m, i) => {
+      const done = K.findExisting(U.records, { memberId: m.id, name: m.name });
+      return `<div class="item${done ? " done" : ""}" data-idx="${i}">
+        <span class="nm">${esc(m.name)}${done ? '<span class="chip done">受付済み</span>' : ""}</span>
+        <span class="kn">${esc(m.kana)}</span>
+      </div>`;
+    }).join("");
+    suggestEl.hidden = false;
+    suggestEl.querySelectorAll(".item").forEach((el, i) => {
+      el.addEventListener("click", () => pickMember(hits[i]));
+    });
+  });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => {
+      if (!suggestEl.hidden) positionSuggest();
+    });
+  }
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".search-box")) suggestEl.hidden = true;
+  });
+
+  function pickMember(m) {
+    U.selected = m;
+    U.tankaiMode = false;
+    const foldTankai = document.getElementById("fold-tankai");
+    if (foldTankai.open) foldTankai.open = false;
+    qEl.value = "";
+    suggestEl.hidden = true;
+    renderPicked();
+  }
+
+  document.getElementById("fold-tankai").addEventListener("toggle", () => {
+    const fold = document.getElementById("fold-tankai");
+    if (!fold.open) {
+      U.tankaiMode = false;
+      return;
+    }
+    U.selected = null;
+    U.tankaiMode = true;
+    document.getElementById("picked").hidden = true;
+    document.getElementById("attend-block").hidden = true;
+    ["chourei", "ms", "share"].forEach(k => { U.attend[k] = false; });
+    renderAttendRow();
+    fillNowInputs("tankai-time-date", "tankai-time-hm");
+    setTimeout(() => document.getElementById("g-name").focus(), 50);
+  });
+
+  document.getElementById("fold-guest").addEventListener("toggle", () => {
+    if (document.getElementById("fold-guest").open) {
+      setTimeout(() => document.getElementById("gu-name").focus(), 50);
+    }
+  });
+
+  function renderPicked() {
+    const box = document.getElementById("picked");
+    document.getElementById("attend-block").hidden = false;
+    if (!U.selected) { box.hidden = true; return; }
+    const m = U.selected;
+    const isFemale = m.gender === "女性";
+    const isNew = K.isNewMemberJoin(m.joined);
+    const isOfficer = K.isOfficerMember(m);
+    const done = K.findExisting(U.records, { memberId: m.id, name: m.name });
+    box.hidden = false;
+    fillNowInputs("entry-time-date", "entry-time-hm");
+    box.innerHTML = `
+      <div class="member-card${done ? " dup" : ""}">
+        ${done ? `<div class="dup-note">この方は ${esc(K.formatRecordTimeText(done) || done.time || "")} にすでに受付されています。重ねて登録すると二重になります。</div>` : ""}
+        <div class="member-card-top">
+          <div>
+            <div class="nm">${esc(m.name)}</div>
+            <div class="kn">${esc(m.kana)}</div>
+          </div>
+          <button type="button" class="linklike pick-clear" data-unpick>選び直す</button>
+        </div>
+        <div class="tags">
+          <label class="tag ${isNew ? "on" : ""}"><input type="checkbox" id="tag-new" ${isNew ? "checked" : ""}> 新入会員</label>
+          <label class="tag ${isFemale ? "on" : ""}"><input type="checkbox" id="tag-female" ${isFemale ? "checked" : ""}> 女性</label>
+          <label class="tag ${isOfficer ? "on" : ""}"><input type="checkbox" id="tag-officer" ${isOfficer ? "checked" : ""}> 役員</label>
+        </div>
+      </div>`;
+    ["tag-new", "tag-female", "tag-officer"].forEach(id => {
+      document.getElementById(id).addEventListener("change", (e) => {
+        e.target.closest(".tag").classList.toggle("on", e.target.checked);
+      });
+    });
+    renderAttendRow();
+  }
+
+  document.getElementById("picked").addEventListener("click", (e) => {
+    if (e.target.closest("[data-unpick]")) resetEntry();
+  });
+
+  function renderAttendRow() {
+    ["attend-row", "tankai-attend-row"].forEach(id => {
+      const row = document.getElementById(id);
+      if (!row) return;
+      row.innerHTML = attItems().map(a =>
+        `<div class="attend ${U.attend[a.key] ? "on" : ""}" data-key="${a.key}">${esc(a.label)}</div>`
+      ).join("");
+      row.querySelectorAll(".attend").forEach(el => {
+        el.addEventListener("click", () => {
+          const k = el.dataset.key;
+          U.attend[k] = !U.attend[k];
+          el.classList.toggle("on", U.attend[k]);
+          document.querySelectorAll(".attend-row .attend[data-key=\"" + k + "\"]").forEach(other => {
+            other.classList.toggle("on", U.attend[k]);
+          });
+        });
+      });
+    });
+  }
+
+  function focusSearch() {
+    setTimeout(() => { qEl.focus(); }, 50);
+  }
+
+  function resetEntry() {
+    U.selected = null;
+    U.tankaiMode = false;
+    qEl.value = "";
+    document.getElementById("picked").hidden = true;
+    document.getElementById("attend-block").hidden = true;
+    ["chourei", "ms", "share"].forEach(k => { U.attend[k] = false; });
+    renderAttendRow();
+    focusSearch();
+  }
+
+  function confirmDuplicate(list, record) {
+    const dup = K.findExisting(list, { memberId: record.memberId, name: record.name });
+    if (dup && !confirm(dup.name + " さんは " + (K.formatRecordTimeText(dup) || "すでに") + " に受付されています。\nそれでももう1件登録しますか？")) {
+      return false;
+    }
+    return true;
+  }
+
+  // 保存は「即この端末に反映」→「裏でスプレッドシートへ同期」。
+  // ネットが遅くても待たされないので、紙のリストを見ながらの連続入力に対応できる。
+  document.getElementById("btn-save").addEventListener("click", () => {
+    if (!U.selected) {
+      alert("名前を選んでください。");
+      return;
+    }
+    const m = U.selected;
+    const now = readDateTime("entry-time-date", "entry-time-hm");
+    const record = {
+      id: K.uid(), date: U.date, event: U.event, time: now, type: "member",
+      memberId: m.id, name: m.name, kana: m.kana, tankai: UKETSUKE_CONFIG.jitanKai,
+      gender: document.getElementById("tag-female").checked ? "女性" : "男性",
+      isNew: document.getElementById("tag-new").checked,
+      isOfficer: document.getElementById("tag-officer").checked,
+      registeredBy: U.who.name
+    };
+    if (!confirmDuplicate(U.records, record)) return;
+    ["chourei", "ms", "share"].forEach(k => { record[k] = !!U.attend[k]; });
+    K.saveRecordLocal(record);
+    U.records.push(record);
+    renderTodayList();
+    resetEntry();
+  });
+
+  document.getElementById("btn-tankai-save").addEventListener("click", () => {
+    const name = document.getElementById("g-name").value.trim();
+    const kana = document.getElementById("g-kana").value.trim();
+    const tankai = document.getElementById("g-tankai").value.trim();
+    if (!name) { alert("氏名を入れてください。"); return; }
+    if (!tankai) { alert("単会名を入れてください。"); return; }
+    const gender = segValue("g-gender");
+    if (!gender && !confirm("性別が選ばれていません。このまま登録しますか？\n（女性の参加人数に数えられません。あとから「修正」で選べます）")) return;
+    const now = readDateTime("tankai-time-date", "tankai-time-hm");
+    const record = {
+      id: K.uid(), date: U.date, event: U.event, time: now, type: "tankai",
+      memberId: "", name, kana, tankai, gender,
+      isNew: false,
+      registeredBy: U.who.name
+    };
+    if (!confirmDuplicate(U.records, record)) return;
+    ["chourei", "ms", "share"].forEach(k => { record[k] = !!U.attend[k]; });
+    K.saveRecordLocal(record);
+    U.records.push(record);
+    renderTodayList();
+    ["g-name", "g-kana", "g-tankai"].forEach(id => document.getElementById(id).value = "");
+    setSegValue("g-gender", "");
+    ["chourei", "ms", "share"].forEach(k => { U.attend[k] = false; });
+    renderAttendRow();
+    setTimeout(() => document.getElementById("g-name").focus(), 50);
+  });
+
+  /* ---------- 名簿から候補を出す入力欄（紹介者・アテンド） ----------
+   * 紹介者もアテンドも、必ず名簿にいる会員の方。手打ちだと表記がぶれて
+   * 誰なのか分からなくなるので、名前の検索欄と同じように候補から選べるようにする。 */
+  function attachMemberSuggest(input) {
+    if (!input || input.dataset.suggestWired) return;
+    input.dataset.suggestWired = "1";
+
+    const wrap = document.createElement("span");
+    wrap.className = "suggest-wrap";
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const box = document.createElement("div");
+    box.className = "suggest";
+    box.hidden = true;
+    wrap.appendChild(box);
+
+    let hits = [];
+    let picking = false;
+
+    // 変換候補（IME）は入力欄の下に出るので、名簿の候補は必ず上に出す
+    function place() {
+      const rect = input.getBoundingClientRect();
+      const vv = window.visualViewport;
+      const vTop = vv ? vv.offsetTop : 0;
+      const above = Math.max(80, rect.top - vTop - 12);
+      box.classList.add("above");
+      box.classList.remove("below");
+      box.style.maxHeight = Math.min(240, above) + "px";
+    }
+    function close() { box.hidden = true; }
+
+    input.addEventListener("input", () => {
+      if (picking) return;
+      const q = input.value.trim();
+      if (!q) { close(); return; }
+      hits = K.searchMembers(q).slice(0, 8);
+      if (!hits.length) { close(); return; }
+      box.innerHTML = hits.map((m, i) =>
+        `<div class="item" data-i="${i}"><span class="nm">${esc(m.name)}</span><span class="kn">${esc(m.kana)}</span></div>`
+      ).join("");
+      place();
+      box.hidden = false;
+    });
+
+    // blur より先に拾わないと、指を離した時点で候補が消えてしまう
+    box.addEventListener("mousedown", (e) => {
+      const el = e.target.closest(".item");
+      if (!el) return;
+      e.preventDefault();
+      const m = hits[Number(el.dataset.i)];
+      if (!m) return;
+      picking = true;
+      input.value = m.name;
+      input.dispatchEvent(new Event("input", { bubbles: true })); // 修正画面の保存用
+      picking = false;
+      close();
+    });
+    input.addEventListener("blur", () => setTimeout(close, 150));
+  }
+
+  ["gu-referrer", "gu-attendant", "gu-attendant2"].forEach(id => attachMemberSuggest(document.getElementById(id)));
+
+  /* ---------- ゲスト受付（事前登録＋当日の丸ボタン） ---------- */
+  document.getElementById("btn-guest-add").addEventListener("click", () => {
+    const name = document.getElementById("gu-name").value.trim();
+    const kana = document.getElementById("gu-kana").value.trim();
+    const referrer = document.getElementById("gu-referrer").value.trim();
+    const attendant = K.joinAttendants(
+      document.getElementById("gu-attendant").value,
+      document.getElementById("gu-attendant2").value
+    );
+    const note = document.getElementById("gu-note").value.trim();
+    const gender = segValue("gu-gender");
+    if (!name) { alert("名前を入れてください。"); return; }
+    if (!gender && !confirm("性別が選ばれていません。このまま追加しますか？\n（女性の参加人数に数えられません。あとから「修正」で選べます）")) return;
+    const dup = K.findExisting(U.guests, { name });
+    if (dup && !confirm(name + " さんはすでにゲストとして登録されています。\nそれでももう1件追加しますか？")) {
+      return;
+    }
+    const record = {
+      id: K.uid(), date: U.date, event: U.event, time: entryStamp(), type: "guest",
+      memberId: "", name, kana, tankai: "ゲスト", gender, isNew: false,
+      referrer, attendant, note,
+      registeredBy: U.who.name
+    };
+    UKETSUKE_CONFIG.attendance.forEach(a => { record[a.key] = false; });
+    K.saveRecordLocal(record);
+    U.guests.push(record);
+    renderGuestList();
+    ["gu-name", "gu-kana", "gu-referrer", "gu-attendant", "gu-attendant2", "gu-note"].forEach(id => document.getElementById(id).value = "");
+    setSegValue("gu-gender", "");
+    setTimeout(() => document.getElementById("gu-name").focus(), 50);
+  });
+
+  /* 女性／男性の2択。押した方に色を付ける（もう一度押しても外れない。外すのは修正画面の「未選択」） */
+  function wireSeg(id, onChange) {
+    const box = document.getElementById(id);
+    if (!box) return;
+    box.addEventListener("change", () => {
+      box.querySelectorAll("label").forEach(l => l.classList.toggle("on", l.querySelector("input").checked));
+      if (onChange) onChange(segValue(id));
+    });
+  }
+  function segValue(id) {
+    const hit = document.querySelector("#" + id + " input:checked");
+    return hit ? hit.value : "";
+  }
+  function setSegValue(id, v) {
+    document.querySelectorAll("#" + id + " input").forEach(i => {
+      i.checked = i.value === v;
+      i.closest("label").classList.toggle("on", i.checked);
+    });
+  }
+  wireSeg("gu-gender");
+  wireSeg("g-gender");
+
+  function datedHeading(noun) {
+    if (!U.date || U.date === K.todayYmd()) return "今日の" + noun;
+    return K.jaDate(U.date) + "の" + noun;
+  }
+  function renderGuestList() {
+    const guestTitle = document.getElementById("guest-list-title");
+    if (guestTitle) guestTitle.textContent = datedHeading("ゲスト");
+    document.getElementById("guest-count").textContent = U.guests.length;
+    const box = document.getElementById("guest-list");
+    if (!U.guests.length) {
+      box.innerHTML = '<p style="color:#6b7686; font-size:.86rem">まだゲストの登録がありません。他の端末の入力を取り込むときは、右上の「更新」を押してください。</p>';
+      return;
+    }
+    const sorted = U.guests.slice().sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+    const rows = sorted.map(r => {
+      const arrived = attItems().some(a => r[a.key]);
+      const statusChip = arrived ? '<span class="chip arrived">来場</span>' : '<span class="chip">未着</span>';
+      const buttons = attItems().map(a =>
+        `<button type="button" class="attend mini ${r[a.key] ? "on" : ""}" data-guest="${esc(r.id)}" data-key="${a.key}">${esc(attShort(a))}</button>`
+      ).join("");
+      const memo = [];
+      if (r.referrer) memo.push("紹介 " + r.referrer);
+      const atts = K.formatAttendants(r.attendant);
+      if (atts) memo.push("アテンド " + atts);
+      if (r.note) memo.push(r.note);
+      return `<tr class="${arrived ? "row-arrived" : ""}">
+        <td class="col-status">${statusChip}</td>
+        <td class="col-name gl-name"><span class="cell-val"><strong>${esc(r.name)}</strong>${
+          r.gender === "女性" ? ` <span class="chip female">女性</span>` : (r.gender ? "" : ` <span class="chip">性別未入力</span>`)
+        }${
+          r.kana ? `<br><span class="kn-sub">${esc(r.kana)}</span>` : ""
+        }</span></td>
+        <td class="col-memo ro-note">${esc(memo.join(" ／ "))}</td>
+        <td class="col-attend"><div class="attend-row mini">${buttons}</div></td>
+        <td class="col-edit"><button type="button" class="btn small ghost" data-edit-guest="${esc(r.id)}">修正</button></td>
+      </tr>`;
+    }).join("");
+    box.innerHTML = `<div class="table-scroll"><table class="list cards guest-table">
+      <thead><tr><th>状態</th><th>名前</th><th>メモ</th><th>出席</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+    box.querySelectorAll("[data-guest]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const rec = U.guests.find(r => r.id === btn.dataset.guest);
+        if (!rec) return;
+        const k = btn.dataset.key;
+        rec[k] = !rec[k];
+        rec.time = rec.time || K.nowDateTime();
+        K.saveRecordLocal(rec);
+        renderGuestList();
+      });
+    });
+    box.querySelectorAll("[data-edit-guest]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const rec = U.guests.find(r => r.id === btn.dataset.editGuest);
+        if (rec) openEditModal(rec);
+      });
+    });
+  }
+
+  /* ---------- 今日の一覧 ---------- */
+  function chip(text, cls) { return `<span class="chip ${cls || ""}">${esc(text)}</span>`; }
+
+  function renderTodayList() {
+    const listTitle = document.getElementById("today-list-title");
+    if (listTitle) listTitle.textContent = datedHeading("受付一覧");
+    document.getElementById("today-count").textContent = U.records.length;
+    const box = document.getElementById("today-list");
+    if (!U.records.length) {
+      box.innerHTML = '<p style="color:#6b7686; font-size:.86rem">まだ受付がありません。他の端末の入力を取り込むときは、右上の「更新」を押してください。</p>';
+      return;
+    }
+    const sorted = U.records.slice().sort(K.compareRecordTime);
+    const rows = sorted.map(r => {
+      const tags = [];
+      if (r.type === "tankai") tags.push(chip("他単会：" + (r.tankai || ""), "guest"));
+      if (r.isNew) tags.push(chip("新入会員", "new"));
+      if (r.gender === "女性") tags.push(chip("女性", "female"));
+      else if (r.type === "tankai" && !r.gender) tags.push(chip("性別未入力", ""));
+      if (K.recordIsOfficer(r)) tags.push(chip("役員", "officer"));
+      // 参加しない会は空欄ではなく薄い「−」にする。スマホでは1行に並ぶので、
+      // 空欄だとどの会に丸が付いているのか読み取れない。
+      const attendMarks = attItems().map(a =>
+        `<span class="am${r[a.key] ? " on" : ""}">${esc(attShort(a))}${
+          r[a.key] ? "◯" : "<span class=\"mk-no\">−</span>"
+        }</span>`
+      ).join("");
+      const t = K.normalizeRecordTime(r);
+      return `<tr>
+        <td class="col-time"><span class="time-date">${esc(t.ymd ? K.jaDateShort(t.ymd) : "")}</span><span class="time-hm">${esc(t.hm)}</span></td>
+        <td class="col-name"><span class="cell-val"><strong>${esc(r.name)}</strong>${
+          r.kana ? `<br><span class="kn-sub">${esc(r.kana)}</span>` : ""
+        }</span></td>
+        <td class="col-attend"><div class="attend-marks">${attendMarks}</div></td>
+        <td class="col-tags">${tags.join("")}</td>
+        <td class="col-edit"><button type="button" class="btn small ghost" data-edit="${esc(r.id)}">修正</button></td>
+      </tr>`;
+    }).join("");
+    box.innerHTML = `<div class="table-scroll"><table class="list cards">
+      <thead><tr><th class="col-time">受付日時</th><th>氏名</th><th>出席</th><th>タグ</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+    box.querySelectorAll("[data-edit]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const rec = U.records.find(r => r.id === btn.dataset.edit);
+        if (rec) openEditModal(rec);
+      });
+    });
+  }
+
+  /* ---------- 修正画面（取消もここに入っている） ---------- */
+  let editing = null;
+
+  function escAttr(s) { return esc(s).replace(/`/g, "&#96;"); }
+
+  function buildEditBody(r) {
+    const tp = K.normalizeRecordTime(r);
+    const timeFields = `
+        <div class="field"><span class="lbl">入力日</span>
+          <div class="date-wrap">
+            <span class="date-face" aria-hidden="true"></span>
+            <input id="ed-time-date" type="date" value="${escAttr(tp.ymd || r.date || "")}">
+          </div>
+        </div>
+        <div class="field"><span class="lbl">入力時刻</span><input id="ed-time-hm" type="time" value="${escAttr(tp.hm || "")}"></div>`;
+    let fields = "";
+    if (r.type === "guest") {
+      const att = K.splitAttendants(r.attendant);
+      fields = `
+        <div class="field wide"><span class="lbl">名前</span><input id="ed-name" value="${escAttr(r.name)}"></div>
+        <div class="field wide"><span class="lbl">ふりがな（ひらがな）</span><input id="ed-kana" value="${escAttr(r.kana || "")}"></div>
+        <div class="field wide"><span class="lbl">性別</span>
+          <select id="ed-gender">
+            <option value="" ${!r.gender ? "selected" : ""}>未選択</option>
+            <option value="女性" ${r.gender === "女性" ? "selected" : ""}>女性</option>
+            <option value="男性" ${r.gender === "男性" ? "selected" : ""}>男性</option>
+          </select>
+        </div>
+        <div class="field wide"><span class="lbl">紹介者</span><input id="ed-referrer" value="${escAttr(r.referrer || "")}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="field"><span class="lbl">アテンド1</span><input id="ed-attendant" value="${escAttr(att[0])}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="field"><span class="lbl">アテンド2</span><input id="ed-attendant2" value="${escAttr(att[1])}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="field wide"><span class="lbl">備考欄</span><input id="ed-note" value="${escAttr(r.note || "")}"></div>`;
+    } else if (r.type === "tankai") {
+      fields = `
+        <div class="field"><span class="lbl">氏名</span><input id="ed-name" value="${escAttr(r.name)}"></div>
+        <div class="field"><span class="lbl">ふりがな</span><input id="ed-kana" value="${escAttr(r.kana || "")}"></div>
+        <div class="field"><span class="lbl">単会名</span><input id="ed-tankai" value="${escAttr(r.tankai || "")}"></div>
+        <div class="field"><span class="lbl">性別</span>
+          <select id="ed-gender">
+            <option value="" ${!r.gender ? "selected" : ""}>未選択</option>
+            <option value="男性" ${r.gender === "男性" ? "selected" : ""}>男性</option>
+            <option value="女性" ${r.gender === "女性" ? "selected" : ""}>女性</option>
+          </select>
+        </div>`;
+    } else {
+      fields = `
+        <div class="field"><span class="lbl">氏名</span><div class="ro">${esc(r.name)}</div></div>
+        <div class="field"><span class="lbl">ふりがな</span><div class="ro">${esc(r.kana || "")}</div></div>
+        <label class="tag ${r.isNew ? "on" : ""}"><input type="checkbox" id="ed-new" ${r.isNew ? "checked" : ""}> 新入会員</label>
+        <label class="tag ${r.gender === "女性" ? "on" : ""}"><input type="checkbox" id="ed-female" ${r.gender === "女性" ? "checked" : ""}> 女性</label>
+        <label class="tag ${K.recordIsOfficer(r) ? "on" : ""}"><input type="checkbox" id="ed-officer" ${K.recordIsOfficer(r) ? "checked" : ""}> 役員</label>`;
+    }
+    fields = timeFields + fields;
+    const attendHtml = `<div class="attend-row" id="ed-attend-row">${
+      attItems().map(a => `<div class="attend ${r[a.key] ? "on" : ""}" data-key="${a.key}">${esc(a.label)}</div>`).join("")
+    }</div>`;
+    return `<div class="guest-form">${fields}</div>${attendHtml}`;
+  }
+
+  function wireEditBody(r) {
+    document.querySelectorAll("#ed-attend-row .attend").forEach(el => {
+      el.addEventListener("click", () => {
+        const k = el.dataset.key;
+        r[k] = !r[k];
+        el.classList.toggle("on", r[k]);
+      });
+    });
+    const bindText = (id, key) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("input", e => { r[key] = e.target.value; });
+    };
+    if (r.type === "guest") {
+      bindText("ed-name", "name"); bindText("ed-kana", "kana"); bindText("ed-referrer", "referrer");
+      bindText("ed-note", "note");
+      document.getElementById("ed-gender").addEventListener("change", e => { r.gender = e.target.value; });
+      const a1 = document.getElementById("ed-attendant");
+      const a2 = document.getElementById("ed-attendant2");
+      const syncAtt = () => { r.attendant = K.joinAttendants(a1.value, a2.value); };
+      a1.addEventListener("input", syncAtt);
+      a2.addEventListener("input", syncAtt);
+      ["ed-referrer", "ed-attendant", "ed-attendant2"].forEach(id => attachMemberSuggest(document.getElementById(id)));
+    } else if (r.type === "tankai") {
+      bindText("ed-name", "name"); bindText("ed-kana", "kana"); bindText("ed-tankai", "tankai");
+      document.getElementById("ed-gender").addEventListener("change", e => { r.gender = e.target.value; });
+    } else {
+      document.getElementById("ed-new").addEventListener("change", e => {
+        r.isNew = e.target.checked;
+        e.target.closest(".tag").classList.toggle("on", e.target.checked);
+      });
+      document.getElementById("ed-female").addEventListener("change", e => {
+        r.gender = e.target.checked ? "女性" : "男性";
+        e.target.closest(".tag").classList.toggle("on", e.target.checked);
+      });
+      document.getElementById("ed-officer").addEventListener("change", e => {
+        r.isOfficer = e.target.checked;
+        e.target.closest(".tag").classList.toggle("on", e.target.checked);
+      });
+    }
+  }
+
+  function openEditModal(record) {
+    editing = JSON.parse(JSON.stringify(record));
+    document.getElementById("edit-title").textContent = editing.type === "guest" ? "ゲスト情報の修正" : "受付内容の修正";
+    document.getElementById("edit-body").innerHTML = buildEditBody(editing);
+    wireEditBody(editing);
+    K.bindDateFaces(document.getElementById("edit-body"));
+    document.getElementById("edit-overlay").hidden = false;
+  }
+  function closeEditModal() {
+    editing = null;
+    document.getElementById("edit-overlay").hidden = true;
+  }
+
+  function refreshRecordInMemory(rec) {
+    if (rec.type === "guest") {
+      U.guests = U.guests.filter(r => r.id !== rec.id);
+      U.guests.push(rec);
+    } else {
+      U.records = U.records.filter(r => r.id !== rec.id);
+      U.records.push(rec);
+    }
+  }
+
+  document.getElementById("edit-save").addEventListener("click", () => {
+    if (!editing) return;
+    if (!editing.name || !editing.name.trim()) { alert("名前を入れてください。"); return; }
+    editing.name = editing.name.trim();
+    editing.time = readDateTime("ed-time-date", "ed-time-hm");
+    K.saveRecordLocal(editing);
+    refreshRecordInMemory(editing);
+    closeEditModal();
+    renderTodayList();
+    renderGuestList();
+  });
+  document.getElementById("edit-close").addEventListener("click", closeEditModal);
+  document.getElementById("edit-delete").addEventListener("click", () => {
+    if (!editing) return;
+    if (!confirm("この受付を取り消しますか？")) return;
+    K.deleteRecordLocal(editing.date, editing.event, editing.id);
+    if (editing.type === "guest") U.guests = U.guests.filter(r => r.id !== editing.id);
+    else U.records = U.records.filter(r => r.id !== editing.id);
+    closeEditModal();
+    renderTodayList();
+    renderGuestList();
+  });
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function entryDateDefault() {
+    return (U.date && U.date < K.todayYmd()) ? U.date : K.todayYmd();
+  }
+  function entryStamp() {
+    return entryDateDefault() + " " + K.nowHm();
+  }
+  function fillNowInputs(dateId, timeId) {
+    const d = document.getElementById(dateId);
+    const t = document.getElementById(timeId);
+    if (d) d.value = entryDateDefault();
+    if (t) t.value = K.nowHm();
+  }
+  function readDateTime(dateId, timeId) {
+    const d = document.getElementById(dateId);
+    const t = document.getElementById(timeId);
+    const date = (d && d.value) || K.todayYmd();
+    const hm = (t && t.value) || K.nowHm();
+    return date + " " + hm;
+  }
+
+  /* ---------- 起動 ---------- */
+  function boot() {
+    const modeEl = document.getElementById("store-mode");
+    if (!K.endpointReady()) {
+      modeEl.hidden = false;
+      modeEl.className = "banner";
+      modeEl.textContent = "この端末にだけ保存されています。他の受付担当と共有するにはスプレッドシート連携が必要です（README参照）。";
+    } else {
+      modeEl.hidden = true;
+    }
+
+    renderRosterBar();
+    K.sessionsFromLocal();
+    // 「履歴・集計」から来たとき：?edit=日付&event=… でその回を修正、?backfill=1 で過去の日付を入力
+    const params = new URLSearchParams(location.search);
+    const editDate = (params.get("edit") || "").trim();
+    const editEvent = (params.get("event") || "").trim() || K.DEFAULT_EVENT;
+    const editInfo = editDate ? K.findSessionInfo(editDate, editEvent) : null;
+    if (params.toString()) history.replaceState(null, "", location.pathname);
+    if (editInfo) {
+      switchSession(editDate, editEvent, { viaHistory: editInfo.status === "締切済み" });
+    } else {
+      const s = K.pickCurrentSession();
+      switchSession(s.date, s.event, {});
+    }
+    checkStaleOpen();
+    if (params.get("backfill") === "1") openSessionPopup({ backfill: true });
+    reloadFromServer();
+  }
+
+  K.bindDateFaces();
+  K.loadMembers();
+  K.loadAuth();
+  if (K.needsAuthGate()) {
+    showAuthGate();
+  } else {
+    document.getElementById("who-name").textContent = U.who.name;
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

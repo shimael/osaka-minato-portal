@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f2f4f">
+<title>モーニングセミナー 参加お申し込み | 大阪みなと倫理法人会</title>
+<style>
+  /* ============================================================
+     モーニングセミナー 参加お申し込み（ご本人用）
+
+     ゲストの方ご本人が開くページ。外の方に渡すので、会員の名簿は読み込まない。
+     送った内容は受付ファイルのゲスト名簿にまとまる（紹介者用フォームと同じ受け口）。
+     紹介者が送るリンクに ?ref=紹介者名&date=日付 が付いていれば、その欄を埋めて開く。
+     ============================================================ */
+  :root{
+    --navy:#0f2f4f; --navy-2:#16436c; --gold:#c8a24a;
+    --bg:#eef1f6; --ink:#16202e; --sub:#6b7686; --line:#e5e9f0; --ok:#2f6f4e; --rose:#a8375a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",Meiryo,sans-serif;
+    -webkit-text-size-adjust:100%;
+  }
+  header{background:var(--navy); color:#fff; padding:22px 20px 20px; text-align:center}
+  header .org{font-size:.78rem; letter-spacing:.12em; color:var(--gold); font-weight:700}
+  header h1{margin:6px 0 0; font-size:1.25rem; letter-spacing:.04em}
+  .wrap{max-width:600px; margin:0 auto; padding:16px 14px 80px}
+  .lead{margin:2px 2px 14px; font-size:.88rem; line-height:1.8}
+
+  .sec{background:#fff; border:1px solid #eaeef4; border-radius:14px; padding:16px; margin-bottom:12px}
+  .sec h2{margin:0 0 12px; font-size:.95rem}
+  .hint{margin:-6px 0 12px; font-size:.76rem; color:var(--sub); line-height:1.6}
+  .grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px}
+  .grid .wide{grid-column:1/-1}
+  @media(max-width:520px){ .grid{grid-template-columns:1fr} }
+  .field{display:flex; flex-direction:column; gap:6px; min-width:0}
+  .lbl{font-size:.8rem; font-weight:800; color:var(--sub)}
+  .req{color:var(--rose); font-size:.72rem; font-weight:800; margin-left:6px}
+  .opt{color:#a2aab7; font-size:.72rem; font-weight:700; margin-left:6px}
+  input,textarea{
+    border:1px solid var(--line); border-radius:10px; padding:12px; background:#fff; color:var(--ink);
+    width:100%; font-size:16px; font-family:inherit;
+  }
+  input:focus,textarea:focus{outline:2px solid #c9d8ea; border-color:var(--navy-2)}
+  .choices{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
+  .choices.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .choices label{
+    position:relative; display:flex; align-items:center; justify-content:center; text-align:center;
+    border:1px solid var(--line); border-radius:10px; padding:12px 8px; background:#fff; cursor:pointer;
+    font-size:.9rem; font-weight:800; color:var(--sub); line-height:1.35;
+  }
+  .choices input{position:absolute; opacity:0; pointer-events:none; width:auto}
+  .choices label.on{background:var(--navy); border-color:var(--navy); color:#fff}
+  .choices label.female.on{background:var(--rose); border-color:var(--rose)}
+  .choices label{flex-direction:column; gap:3px}
+  .choices .time{font-size:.74rem; font-weight:700; opacity:.85}
+  .choices .must{font-size:.66rem; font-weight:800; letter-spacing:.04em; opacity:.85}
+  .choices label.locked{cursor:default}
+  .choices label.warn s{text-decoration-thickness:1.5px}
+  .choices .note{font-size:.7rem; font-weight:700; color:var(--rose); line-height:1.45}
+  .choices label.warn.on .note{color:#ffd9e4}
+  .warnbox{margin-top:10px; padding:10px 12px; border-radius:10px; background:#fdf0f3; color:var(--rose); font-size:.8rem; font-weight:700; line-height:1.6}
+  .compact{max-width:340px}
+  .chips{display:flex; flex-wrap:wrap; gap:8px}
+  .chips label{
+    position:relative; border:1px solid var(--line); border-radius:999px; padding:9px 14px; background:#fff;
+    cursor:pointer; font-size:.86rem; font-weight:700; color:var(--sub);
+  }
+  .chips input{position:absolute; opacity:0; pointer-events:none; width:auto}
+  .chips label.on{background:var(--gold); border-color:var(--gold); color:#fff}
+  .agree{display:flex; gap:10px; align-items:flex-start; font-size:.88rem; line-height:1.65; cursor:pointer}
+  .agree input{width:auto; margin-top:5px; transform:scale(1.25)}
+  .err{margin-top:10px; font-size:.8rem; color:var(--rose); font-weight:700; line-height:1.6}
+  .btn{
+    display:block; width:100%; background:var(--navy); color:#fff; border:0; border-radius:12px;
+    padding:15px; font-size:1.05rem; font-weight:800; letter-spacing:.06em; cursor:pointer; margin-top:16px;
+  }
+  .btn[disabled]{opacity:.55}
+  .hp{position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden}
+  .done{text-align:center; padding:28px 18px}
+  .done h2{color:var(--ok); font-size:1.1rem}
+  .done p{font-size:.92rem; line-height:1.9; margin:8px 0}
+  .done .when{font-size:1.05rem; font-weight:800}
+  .foot{margin:18px 4px 0; font-size:.72rem; color:#a2aab7; line-height:1.7; text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="org" id="org">大阪みなと倫理法人会</div>
+  <h1>モーニングセミナー 参加お申し込み</h1>
+</header>
+
+<div class="wrap">
+  <form id="form" novalidate>
+    <p class="lead">モーニングセミナーに興味を持っていただき、ありがとうございます。<br>当日、気持ちよくお迎えできるよう、少しだけ教えてください。1〜2分で終わります。</p>
+
+    <section class="sec">
+      <h2>ご参加の日<span class="req">必須</span></h2>
+      <div class="choices" id="dates"><p class="hint">読み込んでいます…</p></div>
+      <div class="warnbox" id="dateWarn" hidden></div>
+      <div class="field" style="margin-top:14px">
+        <span class="lbl">ご参加の予定（朝礼・朝食会はご自由に）</span>
+        <div class="choices three" id="plan"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2>あなたのことを少し教えてください</h2>
+      <div class="grid">
+        <div class="field"><span class="lbl">お名前<span class="req">必須</span></span><input id="name" autocomplete="name" placeholder="例：山田 太郎"></div>
+        <div class="field"><span class="lbl">ふりがな<span class="req">必須</span></span><input id="kana" placeholder="例：やまだ たろう"></div>
+        <div class="field wide">
+          <span class="lbl">性別<span class="opt">任意</span></span>
+          <div class="choices compact" id="gender">
+            <label class="female"><input type="radio" name="gender" value="女性">女性</label>
+            <label><input type="radio" name="gender" value="男性">男性</label>
+          </div>
+        </div>
+        <div class="field wide">
+          <span class="lbl">会社名・屋号・お仕事など<span class="opt">任意</span></span>
+          <input id="company" autocomplete="organization">
+          <span class="hint" style="margin:0">フリーランスの方は屋号やお仕事の内容など、自由にお書きください。</span>
+        </div>
+        <div class="field"><span class="lbl">役職・肩書き<span class="opt">任意</span></span><input id="title" autocomplete="organization-title"></div>
+        <div class="field"><span class="lbl">業種<span class="opt">任意</span></span><input id="industry" placeholder="例：建設業"></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="grid">
+        <div class="field wide">
+          <span class="lbl">興味・関心のあること（いくつでも）<span class="opt">任意</span></span>
+          <div class="chips" id="interest"></div>
+        </div>
+        <div class="field wide">
+          <span class="lbl">倫理法人会のセミナーへのご参加<span class="opt">任意</span></span>
+          <div class="choices" id="experience">
+            <label><input type="radio" name="experience" value="初めて">初めて</label>
+            <label><input type="radio" name="experience" value="以前に参加したことがある">以前に参加したことがある</label>
+            <label><input type="radio" name="experience" value="別の単会に入っていたことがある">以前、他の単会に所属していた</label>
+          </div>
+        </div>
+        <div class="field wide">
+          <span class="lbl">ご紹介者様（会員からのご紹介の場合は、その方のお名前）<span class="opt">任意</span></span>
+          <input id="ref">
+        </div>
+        <div class="field wide">
+          <span class="lbl">ひとことや、お伝えしておきたいこと<span class="opt">任意</span></span>
+          <textarea id="message" rows="3"></textarea>
+          <span class="hint" style="margin:0">楽しみにしていること、聞いてみたいこと、当日気をつけてほしいことなど、なんでもどうぞ。</span>
+        </div>
+      </div>
+      <div class="hp" aria-hidden="true"><input id="website" tabindex="-1" autocomplete="off"></div>
+    </section>
+
+    <section class="sec">
+      <p class="hint" style="margin:0 0 12px">ご記入いただいた内容は、今回のモーニングセミナーで<span class="org-name">大阪みなと倫理法人会</span>があなたをお迎えする準備（受付やご案内などのおもてなし）のためだけに使います。</p>
+      <label class="agree"><input type="checkbox" id="consent"><span>上記の目的で使うことに同意します<span class="req">必須</span></span></label>
+      <div class="err" id="err" hidden></div>
+      <button type="submit" class="btn" id="send">申し込む</button>
+    </section>
+  </form>
+
+  <section class="sec done" id="done" hidden></section>
+</div>
+
+<script src="config.js?v=20261011d"></script>
+<script>
+(function () {
+  "use strict";
+  const C = GUEST_FORM_CONFIG;
+  const $ = id => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  document.querySelectorAll(".org-name").forEach(el => { el.textContent = C.org; });
+  $("org").textContent = C.org;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function toHiragana(s) {
+    return String(s || "").replace(/[\u30a1-\u30f6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  }
+  function uid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+  async function api(params, body) {
+    const res = body
+      ? await fetch(C.endpoint, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(Object.assign({ key: C.key }, body)) })
+      : await fetch(C.endpoint + "?" + new URLSearchParams(Object.assign({ key: C.key }, params)));
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || "送れませんでした");
+    return j;
+  }
+
+  const plans = C.plans || [];
+  $("plan").innerHTML = plans.map(p => `
+    <label${p.required ? ' class="locked"' : ""}><input type="checkbox" value="${esc(p.value)}"${p.required ? " checked disabled" : ""}>
+      <span>${esc(p.value).replace("モーニングセミナー", "モーニング<br>セミナー")}</span>
+      <span class="time">${esc(p.time || "")}</span>${p.required ? '<span class="must">必須</span>' : ""}</label>`).join("");
+  $("interest").innerHTML = (C.interests || []).map(x =>
+    `<label><input type="checkbox" value="${esc(x)}">${esc(x)}</label>`).join("");
+
+  function paintChoices(box) {
+    box.querySelectorAll("label").forEach(l => l.classList.toggle("on", l.querySelector("input").checked));
+  }
+  function paintDateWarn() {
+    const el = document.querySelector('input[name="date"]:checked');
+    const note = el ? el.dataset.note : "";
+    $("dateWarn").hidden = !note;
+    $("dateWarn").textContent = note ? note + "。念のため、ご紹介者か会にご確認いただけると安心です。" : "";
+  }
+  ["plan", "gender", "experience", "dates", "interest"].forEach(id => $(id).addEventListener("change", () => paintChoices($(id))));
+  $("dates").addEventListener("change", paintDateWarn);
+  paintChoices($("plan"));
+  if (params.get("ref")) $("ref").value = params.get("ref");
+  $("kana").addEventListener("blur", () => { $("kana").value = toHiragana($("kana").value).trim(); });
+
+  async function loadDates(tries) {
+    const box = $("dates");
+    try {
+      const j = await api({ action: "formDates" });
+      const want = params.get("date");
+      const first = j.dates.find(d => !d.note) || j.dates[0];
+      const pick = j.dates.some(d => d.date === want) ? want : first && first.date;
+      box.innerHTML = j.dates.map(d => d.note
+        ? `<label class="warn"><input type="radio" name="date" value="${esc(d.date)}" data-label="${esc(d.label)}" data-note="${esc(d.note)}"${d.date === pick ? " checked" : ""}><s>${esc(d.label)}</s><span class="note">${esc(d.note)}</span></label>`
+        : `<label><input type="radio" name="date" value="${esc(d.date)}" data-label="${esc(d.label)}"${d.date === pick ? " checked" : ""}>${esc(d.label)}</label>`
+      ).join("") || `<p class="hint">いまお申し込みいただける日がありません。</p>`;
+      paintChoices(box);
+      paintDateWarn();
+    } catch (e) {
+      if ((tries || 0) < 3) { setTimeout(() => loadDates((tries || 0) + 1), 1500 * ((tries || 0) + 1)); return; }
+      box.innerHTML = `<p class="hint">日付を読み込めませんでした。電波のよいところで、ページを開き直してください。</p>`;
+    }
+  }
+  loadDates();
+
+  let applyId = null;
+  const val = id => $(id).value.trim();
+  const checked = name => { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : ""; };
+  function showErr(msg) { $("err").hidden = !msg; $("err").textContent = msg || ""; }
+
+  $("form").addEventListener("input", () => { applyId = null; });
+  $("form").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const date = checked("date");
+    const missing = [];
+    if (!date) missing.push("ご参加の日");
+    if (!val("name")) missing.push("お名前");
+    if (!val("kana")) missing.push("ふりがな");
+    if (missing.length) return showErr(missing.join("・") + " をご記入ください。");
+    if (!$("consent").checked) return showErr("同意の欄にチェックを入れてください。");
+    showErr("");
+    applyId = applyId || uid();
+    const apply = {
+      id: applyId, via: "本人", date,
+      plan: Array.from($("plan").querySelectorAll("input:checked")).map(x => x.value),
+      interest: Array.from($("interest").querySelectorAll("input:checked")).map(x => x.value),
+      name: val("name"), kana: toHiragana(val("kana")), gender: checked("gender"),
+      company: val("company"), title: val("title"), industry: val("industry"),
+      referrer: val("ref"),
+      experience: checked("experience"), message: val("message"), consent: true, website: val("website")
+    };
+    const btn = $("send");
+    btn.disabled = true;
+    btn.textContent = "送っています…";
+    try {
+      await api(null, { op: "guestApply", updatedBy: "本人フォーム", apply });
+      showDone(apply);
+    } catch (e) {
+      showErr("送れませんでした。電波のよいところで、もう一度「申し込む」を押してください（二重には登録されません）。");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "申し込む";
+    }
+  });
+
+  function showDone(apply) {
+    const input = document.querySelector('input[name="date"]:checked');
+    const when = input ? input.dataset.label : apply.date;
+    const venue = C.venue && C.mapUrl
+      ? `会場：<a href="${esc(C.mapUrl)}" target="_blank" rel="noopener">${esc(C.venue)}</a>（地図）`
+      : C.venue ? "会場：" + esc(C.venue) : "";
+    const times = plans.filter(p => apply.plan.indexOf(p.value) >= 0 && p.time).map(p => esc(p.value + " " + p.time));
+    const place = [...times, venue].filter(Boolean).join("<br>");
+    $("done").innerHTML = `
+      <h2>お申し込みを受け付けました</h2>
+      <p>${esc(apply.name)} 様</p>
+      <p class="when">${esc(when)}のモーニングセミナー</p>
+      ${place ? `<p>${place}</p>` : ""}
+      <p>当日お会いできるのを楽しみにしております。</p>`;
+    $("form").hidden = true;
+    $("done").hidden = false;
+    window.scrollTo(0, 0);
+  }
+})();
+</script>
+</body>
+</html>

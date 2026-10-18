@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>履歴・集計 | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20261006a">
+</head>
+<body>
+<header class="topbar">
+  <h1>履歴・集計</h1>
+  <p class="sub">締め切った回の集計を見たり、あとから修正したりします。受付中の回は、締め切ると集計が見られるようになります。</p>
+  <div class="meta">
+    <button type="button" id="btn-reload-now">更新</button>
+    <span id="live-badge" class="live-badge" hidden></span>
+  </div>
+</header>
+<script src="../portal-nav.js?v=20261018a" data-section="uketsuke" data-tab="rireki"></script>
+
+<div class="wrap">
+  <div class="view-switch" role="tablist" aria-label="表示の切り替え">
+    <a href="rireki.html" aria-current="page">回の一覧</a>
+    <a href="shukei.html">モーニングセミナーの比較</a>
+  </div>
+
+  <div class="card" id="error-card" hidden>
+    <p style="margin:0; color:#a8375a; font-weight:700">⚠️ <span id="error-text"></span></p>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="margin-bottom:10px">
+      <h2 style="margin:0">回の一覧</h2>
+      <a class="btn small ghost" href="index.html?backfill=1">過去の日付で入力する</a>
+    </div>
+    <p class="sub" style="margin:0 0 12px; color:var(--sub)">紙で受け付けた分など、まだ受付を作っていない日は「過去の日付で入力する」から入れられます。いま受付中の回は締め切りません。</p>
+    <div id="list"><p style="color:#6b7686; font-size:.86rem">読み込んでいます…</p></div>
+  </div>
+</div>
+
+<script src="members-data.js?v=20261013a"></script>
+<script src="config.js?v=20261006a"></script>
+<script src="app.js?v=20261007a"></script>
+<script>
+(function () {
+  "use strict";
+  const K = window.UKETSUKE;
+  const U = K.U;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function q(date, event) {
+    return "date=" + encodeURIComponent(date) + "&event=" + encodeURIComponent(event);
+  }
+
+  function paint(sessions) {
+    const box = document.getElementById("list");
+    const list = (sessions || []).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#6b7686; font-size:.86rem">まだ受付の記録がありません。右上の「更新」を押すと、スプレッドシートから読み込みます。</p>';
+      return;
+    }
+    const rows = list.map(s => {
+      const event = s.event || K.DEFAULT_EVENT;
+      const open = s.status === "受付中";
+      const ops = open
+        ? `<a class="btn small" href="index.html">受付画面へ</a>
+           <span class="muted-note">締め切ると集計が見られます</span>`
+        : `<a class="btn small" href="stats.html?${q(s.date, event)}">集計を見る</a>
+           <a class="btn small ghost" href="index.html?edit=${encodeURIComponent(s.date)}&event=${encodeURIComponent(event)}">修正する</a>
+           <button type="button" class="linklike danger" data-del-date="${esc(s.date)}" data-del-event="${esc(event)}">削除</button>`;
+      return `<tr>
+        <td data-label="日付">${esc(K.jaDate(s.date))}</td>
+        <td data-label="イベント">${esc(event)}</td>
+        <td data-label="">${open ? '<span class="chip arrived">受付中</span>' : '<span class="chip">締切済み</span>'}</td>
+        <td data-label="人数">${open ? "—" : esc(s.total || 0) + "名"}</td>
+        <td data-label="" class="row-ops">${ops}</td>
+      </tr>`;
+    }).join("");
+    box.innerHTML = `<div class="table-scroll"><table class="list stack">
+      <thead><tr><th>日付</th><th>イベント名</th><th>状態</th><th>人数</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+    box.querySelectorAll("[data-del-date]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const d = btn.dataset.delDate, ev = btn.dataset.delEvent;
+        if (!confirm(`「${K.jaDate(d)}／${ev}」の回を、データも含めてまるごと削除しますか？この操作は取り消せません。`)) return;
+        try {
+          await K.deleteSession(d, ev);
+          paint(U.sessions);
+        } catch (e) {
+          alert(e.message || "削除に失敗しました");
+        }
+      });
+    });
+  }
+
+  let reloading = false;
+  async function reloadFromServer() {
+    if (reloading) return;
+    reloading = true;
+    const btn = document.getElementById("btn-reload-now");
+    btn.disabled = true;
+    btn.textContent = "更新中…";
+    try {
+      const sessions = await K.fetchSessions();
+      const stale = !!(sessions && sessions._stale);
+      document.getElementById("error-card").hidden = !stale;
+      if (stale) {
+        document.getElementById("error-text").textContent =
+          "スプレッドシートへの接続が不安定なため、この端末に残っている一覧を表示しています。「更新」をもう一度お試しください。";
+      } else {
+        const el = document.getElementById("live-badge");
+        el.hidden = false;
+        el.textContent = "最終更新 " + K.nowHm();
+      }
+      paint(sessions);
+    } finally {
+      reloading = false;
+      btn.disabled = false;
+      btn.textContent = "更新";
+    }
+  }
+  document.getElementById("btn-reload-now").addEventListener("click", reloadFromServer);
+
+  K.loadMembers();
+  K.loadAuth();
+  U.who = { name: U.who.name || "閲覧", key: K.currentKey() };
+  paint(K.sessionsFromLocal());
+  reloadFromServer();
+})();
+</script>
+</body>
+</html>

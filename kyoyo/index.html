@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>職場の教養 | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="hero">
+  <h1>職場の教養</h1>
+  <p class="en">Daily Workplace Reader</p>
+</header>
+
+<div class="wrap">
+  <section class="today">
+    <div class="label">
+      <h2 id="issueTitle">今日</h2>
+      <span class="badge">今日</span>
+    </div>
+    <p class="sub" id="todaySub"></p>
+    <div class="page-frame" id="pageFrame"></div>
+  </section>
+</div>
+
+<footer>大阪みなと倫理法人会</footer>
+
+<script>
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const day = now.getDate();
+  const currentId = `${y}-${String(m).padStart(2, "0")}`;
+
+  function pad(n){ return String(n).padStart(2, "0"); }
+  function pageForDay(issue, d){
+    return (issue.dayStartPage || 2) + d - 1;
+  }
+
+  function render(data){
+    const issue = (data.issues || []).find(x => x.id === currentId);
+    document.getElementById("issueTitle").textContent = `${y}年${m}月${day}日`;
+    document.getElementById("todaySub").textContent = "本日のページです";
+
+    const frame = document.getElementById("pageFrame");
+    if(!issue || !(issue.pageCount > 0)){
+      frame.innerHTML = `<div class="empty">本日のページはまだありません。</div>`;
+      return;
+    }
+    const src = `issues/${issue.id}/p${pad(pageForDay(issue, day))}.jpg`;
+    frame.innerHTML = `<img alt="${y}年${m}月${day}日" src="${src}"
+      onerror="this.parentNode.innerHTML='<div class=empty>本日のページ画像がまだありません。</div>'">`;
+  }
+
+  fetch("issues.json?_=" + Date.now())
+    .then(r => r.json())
+    .then(render)
+    .catch(() => render({issues:[]}));
+</script>
+</body>
+</html>

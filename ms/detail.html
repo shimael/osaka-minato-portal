@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>開催回の詳細 | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20260917j">
+</head>
+<body data-page="detail">
+<header class="topbar">
+  <h1 id="page-title">開催回</h1>
+  <p class="sub" id="page-sub"></p>
+  <div class="meta">
+    <span class="who">表示中：<strong id="who-name"></strong>
+      <button type="button" id="btn-logout">切り替え</button>
+    </span>
+    <span id="ms-save-flag" hidden>保存しています…</span>
+  </div>
+</header>
+<script src="../portal-nav.js?v=20261018a" data-section="ms" data-tab="history" data-page="開催回の詳細"></script>
+
+<div class="wrap">
+  <div id="store-mode" class="banner" hidden></div>
+  <div id="app"></div>
+</div>
+
+<div class="overlay" id="auth-overlay" hidden>
+  <form class="auth-card" id="auth-form">
+    <h2>役職者だけが使います</h2>
+    <p>合言葉と、記録に残すお名前を入れてください。</p>
+    <div class="field">
+      <span class="lbl">お名前</span>
+      <input id="auth-name" autocomplete="name" required>
+    </div>
+    <div class="field" id="auth-key-row">
+      <span class="lbl">合言葉</span>
+      <input id="auth-key" type="password" autocomplete="current-password">
+    </div>
+    <p class="err" id="auth-error"></p>
+    <button class="btn primary" type="submit">入る</button>
+  </form>
+</div>
+
+<footer>大阪みなと倫理法人会　役職者ポータル</footer>
+<script src="../meibo-data.js"></script>
+<script src="history-data.js?v=20260917j"></script>
+<script src="config.js?v=20260917j"></script>
+<script src="app.js?v=20260917j"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const date = params.get("date") || MS.todayYmd();
+  function session() { return MS.sessionOf(date) || { date, status: "予定", format: "unset", venue: "", note: "" }; }
+
+  async function save(ops, msg) {
+    try {
+      await MS.saveOps(ops);
+      if (msg) MS.toast(msg);
+      render();
+    } catch (e) { MS.toast(e.message || "保存できませんでした"); }
+  }
+
+  function memberPicker(slot) {
+    return `<div class="field member-box">
+      <span class="lbl">講話者・スピーチ者（名簿から検索、または自由入力）</span>
+      <input class="spk-search" data-slot="${slot.id}" value="${MS.escapeHtml(slot.speakerName || "")}" placeholder="氏名・会社名・読み仮名">
+      <div class="member-list" hidden></div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <span class="lbl">所属</span>
+        <input class="spk-org" data-slot="${slot.id}" value="${MS.escapeHtml(slot.speakerOrg || "")}">
+      </div>
+      <div class="field">
+        <span class="lbl">区分</span>
+        <select class="spk-type" data-slot="${slot.id}">
+          <option value="会員" ${slot.speakerType!=="外部"?"selected":""}>会員</option>
+          <option value="外部" ${slot.speakerType==="外部"?"selected":""}>外部講師</option>
+        </select>
+      </div>
+    </div>`;
+  }
+
+  function slotCard(slot) {
+    const msgAsk = MS.fillMessage("ask", date, slot);
+    const msgConfirm = MS.fillMessage("confirm", date, slot);
+    return `<article class="card slot-card" data-slot-card="${slot.id}">
+      <div class="slot-kind">${MS.escapeHtml(slot.kind)}${Number(slot.order) > 1 ? " " + slot.order : ""}</div>
+      <div class="decide-box">
+        <div class="prep-title">${MS.escapeHtml(MS.decideTitle(slot.kind))}</div>
+        ${MS.decideChecksHtml(slot)}
+      </div>
+      ${memberPicker(slot)}
+      <div class="row">
+        <div class="field">
+          <span class="lbl">演題</span>
+          <input class="spk-title" data-slot="${slot.id}" value="${MS.escapeHtml(slot.title || "")}">
+        </div>
+        <div class="field">
+          <span class="lbl">依頼の状態</span>
+          <select class="spk-status" data-slot="${slot.id}">
+            ${["未依頼","依頼中","受諾","辞退"].map(s => `<option ${s===slot.status?"selected":""}>${s}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <span class="lbl">メモ</span>
+        <textarea class="spk-note" data-slot="${slot.id}">${MS.escapeHtml(slot.note || "")}</textarea>
+      </div>
+      <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button class="btn primary save-slot" type="button" data-slot="${slot.id}">この枠を保存</button>
+        <button class="btn danger del-slot" type="button" data-slot="${slot.id}">枠を削除</button>
+      </div>
+      <details style="margin-top:12px">
+        <summary>依頼文面を作る</summary>
+        <div class="field" style="margin-top:8px">
+          <span class="lbl">連絡</span>
+          <div class="msg-box">${MS.escapeHtml(msgAsk)}</div>
+          <button class="btn copy-msg" type="button" data-kind="ask" data-slot="${slot.id}">コピー</button>
+        </div>
+        <div class="field">
+          <span class="lbl">確定・レジュメ依頼</span>
+          <div class="msg-box">${MS.escapeHtml(msgConfirm)}</div>
+          <button class="btn copy-msg" type="button" data-kind="confirm" data-slot="${slot.id}">コピー</button>
+        </div>
+        <div class="field">
+          <span class="lbl">レジュメ督促</span>
+          <button class="btn copy-msg" type="button" data-kind="remind_resume" data-slot="${slot.id}">文面をコピー</button>
+          <button class="btn copy-msg" type="button" data-kind="remind_handout" data-slot="${slot.id}">配布資料の督促をコピー</button>
+        </div>
+      </details>
+    </article>`;
+  }
+
+  function render() {
+    const sess = session();
+    const kind = MS.msKindOn(date);
+    const hol = MS.HOLIDAYS[date];
+    $("page-title").textContent = MS.jaDate(date, true);
+    $("page-sub").textContent = (kind === "recess" ? "休会日です。" : kind === "held" ? "モーニングセミナー開催日です。" : "年間カレンダー上はMSの日ではありません。")
+      + (hol ? " " + hol : "");
+
+    const rec = MS.recordOf(date) || {};
+    const roster = MS.rosterOf ? MS.rosterOf(date) : null;
+    const rosterNote = roster
+      ? `<div class="card howto">この回の講話者・会員スピーチは <a href="${MS.escapeHtml((MS_CONFIG.speechSheet && MS_CONFIG.speechSheet.url) || "#")}" target="_blank" rel="noopener">R9 会員スピーチ</a> から読み込んでいます。名前を変えるときはシートを直してください。</div>`
+      : "";
+    let roles = {};
+    try { roles = rec.roles ? JSON.parse(rec.roles) : {}; } catch (e) { roles = {}; }
+    const roleFields = MS.cfg().roles.map(r => `
+      <div class="field"><span class="lbl">${MS.escapeHtml(r)}</span>
+        <input name="role-${MS.escapeHtml(r)}" value="${MS.escapeHtml(roles[r] || "")}">
+      </div>`).join("");
+
+    const tasks = MS.tasksOf(date).slice().sort((a, b) => MS.cmpDate(a.dueDate || "9999", b.dueDate || "9999"));
+    const slots = MS.slotsOf(date);
+
+    $("app").innerHTML = `
+      ${rosterNote}
+      <div class="page-head">
+        <div>
+          <h2>この回の構成</h2>
+          <p class="muted">構成を選ぶと、各枠の期限付きタスクが自動で立ちます。</p>
+        </div>
+      </div>
+      <div class="card stack">
+        <div class="grid-2">
+          <div class="field">
+            <span class="lbl">構成</span>
+            <select id="fmt">
+              ${MS.cfg().formats.map(f => `<option value="${f.id}" ${f.id===(sess.format||"unset")?"selected":""}>${MS.escapeHtml(f.name)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="field">
+            <span class="lbl">状態</span>
+            <select id="sess-status">
+              ${["予定","休会","中止","終了"].map(s => `<option ${s===sess.status?"selected":""}>${s}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <span class="lbl">メモ（この回全体）</span>
+          <textarea id="sess-note">${MS.escapeHtml(sess.note || "")}</textarea>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" type="button" id="apply-fmt">構成を反映してタスクを作る</button>
+          <button class="btn" type="button" id="save-sess">状態とメモだけ保存</button>
+          <button class="btn" type="button" id="add-kowa">講話枠を足す</button>
+          <button class="btn" type="button" id="add-speech">会員スピーチ枠を足す</button>
+        </div>
+      </div>
+
+      <h2 style="margin:22px 0 10px;font-size:1rem">登壇枠</h2>
+      <div class="stack" id="slots">${slots.length ? slots.map(slotCard).join("") : '<div class="card empty">まだ枠がありません。上で構成を選ぶか、枠を足してください。</div>'}</div>
+
+      <h2 style="margin:22px 0 10px;font-size:1rem">この回のタスク</h2>
+      <div class="todo-list">
+        ${tasks.filter(t => !MS.isDecidePart(t)).length ? tasks.filter(t => !MS.isDecidePart(t)).map(t => {
+          const tone = MS.taskTone(t);
+          const roster = MS.isRosterDriven(t);
+          return `<div class="todo ${tone}">
+            <div class="due">${t.dueDate ? MS.jaDate(t.dueDate, false).replace(/^\d+年/, "") : "—"}</div>
+            <div>
+              ${MS.taskTagsHtml(t)}
+              <div class="title">${MS.escapeHtml(MS.taskAction(t))}</div>
+              <div class="meta">${MS.escapeHtml(t.status)}　${t.assignee ? MS.escapeHtml(t.assignee) : "担当未定"}
+                ${roster ? "　／ 担当表に名前があれば完了" : ""}</div>
+            </div>
+            <div class="field">
+              <select class="task-status" data-task="${t.id}" ${roster ? "disabled" : ""}>
+                ${["未着手","進行中","完了","不要"].map(s => `<option ${s===t.status?"selected":""}>${s}</option>`).join("")}
+              </select>
+              <input class="task-assignee" data-task="${t.id}" list="assignees" value="${MS.escapeHtml(t.assignee || "")}" placeholder="担当">
+            </div>
+          </div>`;
+        }).join("") : '<div class="card empty">タスクはまだありません。</div>'}
+      </div>
+      <datalist id="assignees">${MS.assignees().map(n => `<option value="${MS.escapeHtml(n)}">`).join("")}</datalist>
+
+      <h2 style="margin:22px 0 10px;font-size:1rem">当日の記録</h2>
+      <form class="card stack" id="rec-form">
+        <div class="grid-2">
+          <div class="field"><span class="lbl">出席人数（会員）</span><input name="countMember" type="number" min="0" value="${MS.escapeHtml(rec.countMember || "")}"></div>
+          <div class="field"><span class="lbl">ゲスト・見学者</span><input name="countGuest" type="number" min="0" value="${MS.escapeHtml(rec.countGuest || "")}"></div>
+          <div class="field"><span class="lbl">他単会からの参加者</span><input name="countOther" type="number" min="0" value="${MS.escapeHtml(rec.countOther || "")}"></div>
+        </div>
+        <div class="field"><span class="lbl">ゲストのお名前</span><textarea name="guestNames">${MS.escapeHtml(rec.guestNames || "")}</textarea></div>
+        <div class="field"><span class="lbl">講話の要旨・感想</span><textarea name="kowaSummary">${MS.escapeHtml(rec.kowaSummary || "")}</textarea></div>
+        <div class="field"><span class="lbl">進行上の反省・次回への申し送り</span><textarea name="hansei">${MS.escapeHtml(rec.hansei || "")}</textarea></div>
+        <h3 style="margin:0;font-size:.9rem">当日の役割</h3>
+        <div class="grid-2">${roleFields}</div>
+        <div class="field"><span class="lbl">自由メモ</span><textarea name="freeMemo">${MS.escapeHtml(rec.freeMemo || "")}</textarea></div>
+        <div><button class="btn primary" type="submit">記録を保存</button></div>
+      </form>
+    `;
+    bind();
+  }
+
+  function slotFromCard(id) {
+    const old = MS.slotById(id) || { id, date, kind: "講話", order: 1 };
+    const card = document.querySelector(`[data-slot-card="${id}"]`);
+    if (!card) return old;
+    const val = sel => (card.querySelector(sel) || {}).value || "";
+    return Object.assign({}, old, {
+      speakerName: val(".spk-search").trim(),
+      speakerOrg: val(".spk-org").trim(),
+      speakerType: val(".spk-type") || "会員",
+      title: val(".spk-title").trim(),
+      status: val(".spk-status") || "未依頼",
+      note: val(".spk-note")
+    });
+  }
+
+  function bind() {
+    $("apply-fmt").onclick = () => {
+      const cur = session();
+      const ops = MS.applyFormatOps(date, $("fmt").value);
+      const sessOp = ops.find(o => o.sheet === "sessions");
+      if (sessOp && sessOp.rows && sessOp.rows[0]) {
+        sessOp.rows[0].status = $("sess-status").value;
+        sessOp.rows[0].note = $("sess-note").value;
+      } else {
+        ops.unshift({
+          op: "upsert", sheet: "sessions",
+          rows: [Object.assign({}, cur, { format: $("fmt").value, status: $("sess-status").value, note: $("sess-note").value })]
+        });
+      }
+      save(ops, "構成を反映しました");
+    };
+    $("save-sess").onclick = () => {
+      const cur = session();
+      save([{ op: "upsert", sheet: "sessions", rows: [Object.assign({}, cur, {
+        format: $("fmt").value, status: $("sess-status").value, note: $("sess-note").value
+      })] }], "保存しました");
+    };
+    $("add-kowa").onclick = addSlot.bind(null, "講話");
+    $("add-speech").onclick = addSlot.bind(null, "会員スピーチ");
+
+    document.querySelectorAll(".save-slot").forEach(btn => {
+      btn.onclick = () => persistSlot(btn.getAttribute("data-slot"));
+    });
+    document.querySelectorAll(".del-slot").forEach(btn => {
+      btn.onclick = () => delSlot(btn.getAttribute("data-slot"));
+    });
+    document.querySelectorAll(".copy-msg").forEach(btn => {
+      btn.onclick = async () => {
+        const slot = slotFromCard(btn.getAttribute("data-slot"));
+        const text = MS.fillMessage(btn.getAttribute("data-kind"), date, slot);
+        try {
+          await navigator.clipboard.writeText(text);
+          MS.toast("コピーしました");
+        } catch (e) { MS.toast("コピーできませんでした"); }
+      };
+    });
+    document.querySelectorAll("[data-toggle-contact]").forEach(el => {
+      el.onchange = async () => {
+        if (el.dataset.busy === "1") return;
+        el.dataset.busy = "1";
+        const slotId = el.getAttribute("data-toggle-contact");
+        const done = el.checked;
+        MS.paintContactPending(slotId, done);
+        try {
+          await MS.setContactDone(slotId, done);
+          MS.paintContactSettled(slotId, done, true);
+          MS.toast(done ? "連絡済みにしました" : "連絡を未了に戻しました");
+        } catch (err) {
+          MS.paintContactSettled(slotId, done, false);
+          MS.toast(err.message || "保存できませんでした");
+        } finally {
+          const live = document.querySelector(`[data-toggle-contact="${CSS.escape(slotId)}"]`);
+          if (live) live.dataset.busy = "";
+        }
+      };
+    });
+    document.querySelectorAll(".task-status,.task-assignee").forEach(el => {
+      el.onchange = () => persistTask(el.getAttribute("data-task"));
+    });
+    document.querySelectorAll(".spk-search").forEach(inp => bindMemberSearch(inp));
+    $("rec-form").onsubmit = ev => {
+      ev.preventDefault();
+      const fd = new FormData(ev.target);
+      const roles = {};
+      MS.cfg().roles.forEach(r => { roles[r] = String(fd.get("role-" + r) || ""); });
+      save([{ op: "upsert", sheet: "records", rows: [{
+        date,
+        countMember: fd.get("countMember") || "",
+        countGuest: fd.get("countGuest") || "",
+        countOther: fd.get("countOther") || "",
+        guestNames: fd.get("guestNames") || "",
+        kowaSummary: fd.get("kowaSummary") || "",
+        hansei: fd.get("hansei") || "",
+        roles: JSON.stringify(roles),
+        freeMemo: fd.get("freeMemo") || ""
+      }] }], "記録を保存しました");
+    };
+  }
+
+  function bindMemberSearch(inp) {
+    const box = inp.parentElement.querySelector(".member-list");
+    const show = q => {
+      const list = MS.searchMembers(q);
+      if (!list.length) { box.hidden = true; return; }
+      box.innerHTML = list.map(m => `<button type="button" data-id="${m.id}">
+        ${MS.escapeHtml(m.name)}　${MS.escapeHtml(m.company)}
+        <span class="kana">${MS.escapeHtml(m.kana)}</span>
+      </button>`).join("");
+      box.hidden = false;
+    };
+    inp.oninput = () => { const slot = MS.slotById(inp.dataset.slot); if (slot) slot.memberId = ""; show(inp.value); };
+    inp.onfocus = () => show(inp.value);
+    box.onclick = e => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      const m = MS.memberById(b.dataset.id);
+      if (!m) return;
+      const card = inp.closest("[data-slot-card]");
+      inp.value = m.name;
+      card.querySelector(".spk-org").value = m.company;
+      card.querySelector(".spk-type").value = "会員";
+      box.hidden = true;
+      const slot = slotFromCard(inp.dataset.slot);
+      slot.memberId = m.id;
+      persistSlot(slot.id, slot);
+    };
+    document.addEventListener("click", e => {
+      if (!inp.parentElement.contains(e.target)) box.hidden = true;
+    });
+  }
+
+  async function persistSlot(id, given) {
+    const slot = given || slotFromCard(id);
+    const titles = MS.refreshSlotTaskTitles(slot);
+    const ops = [{ op: "upsert", sheet: "slots", rows: [slot] }];
+    if (titles.length) ops.push({ op: "upsert", sheet: "tasks", rows: titles });
+    await save(ops, "枠を保存しました");
+  }
+
+  async function delSlot(id) {
+    if (!confirm("この枠と、枠に紐づくタスクを消しますか。")) return;
+    const taskIds = MS.tasksOf(date).filter(t => t.slotId === id).map(t => t.id);
+    const ops = [{ op: "delete", sheet: "slots", ids: [id] }];
+    if (taskIds.length) ops.push({ op: "delete", sheet: "tasks", ids: taskIds });
+    await save(ops, "削除しました");
+  }
+
+  async function persistTask(id) {
+    const task = MS.taskById(id);
+    if (!task) return;
+    if (MS.isRosterDriven(task)) {
+      const assignee = document.querySelector(`.task-assignee[data-task="${id}"]`).value.trim();
+      await save([{ op: "upsert", sheet: "tasks", rows: [Object.assign({}, task, { assignee })] }]);
+      return;
+    }
+    const status = document.querySelector(`.task-status[data-task="${id}"]`).value;
+    const assignee = document.querySelector(`.task-assignee[data-task="${id}"]`).value.trim();
+    const next = Object.assign({}, task, { status, assignee });
+    if (status === "完了" && task.status !== "完了") { next.doneAt = MS.todayYmd(); next.doneBy = MS.who.name; }
+    if (status !== "完了") { next.doneAt = ""; next.doneBy = ""; }
+    await save([{ op: "upsert", sheet: "tasks", rows: [next] }]);
+  }
+
+  async function addSlot(kind) {
+    const same = MS.slotsOf(date).filter(s => s.kind === kind);
+    const order = same.length + 1;
+    const slot = {
+      id: MS.slotId(date, kind, order), date, kind, order,
+      speakerType: "会員", memberId: "", speakerName: "", speakerOrg: "",
+      title: "", status: "未依頼", note: ""
+    };
+    const tasks = MS.tasksForSlot(date, slot);
+    const sess = session();
+    await save([
+      { op: "upsert", sheet: "sessions", rows: [Object.assign({}, sess, { format: sess.format || "special" })] },
+      { op: "upsert", sheet: "slots", rows: [slot] },
+      { op: "upsert", sheet: "tasks", rows: tasks }
+    ], "枠を追加しました");
+  }
+
+  $("btn-logout").onclick = () => MS.logout();
+
+  MS.boot().then(() => {
+    if (!MS.sessionOf(date) && MS.msKindOn(date)) {
+      return MS.saveOps([{ op: "upsert", sheet: "sessions", rows: [{
+        date, status: MS.msKindOn(date) === "recess" ? "休会" : "予定",
+        format: "unset", venue: "", note: ""
+      }] }]);
+    }
+  }).then(render).catch(err => {
+    $("app").innerHTML = `<div class="card">${MS.escapeHtml(err.message || String(err))}</div>`;
+  });
+})();
+</script>
+</body>
+</html>

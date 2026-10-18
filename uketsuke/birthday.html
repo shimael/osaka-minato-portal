@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f2f4f">
+<title>バースデー | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20261006a">
+<style>
+  /* ============================================================
+     バースデー（会長が花束のお祝い前に、スマホで開いて見るページ）
+
+     知りたいことは「誰の誕生日か」と「今日来ているか」。
+     来ている方だけ名前を呼べるよう、来ているカードを先に出し、
+     まだの方はカードごとグレーに沈める。
+     ============================================================ */
+
+  body{background:var(--bg)}
+  .wrap{max-width:760px; margin:0 auto; padding:14px 14px 60px}
+
+  .topbar{padding:12px 20px 14px}
+  .topbar .crumb{margin:0 0 4px}
+  .topbar .crumb a{color:inherit}
+
+  .when{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    padding:2px 4px 12px; font-size:.82rem; color:var(--sub);
+  }
+  .when-date{font-weight:800; color:var(--ink); font-size:.9rem; line-height:1.45}
+  .when-status{
+    display:inline-block; margin-left:8px; vertical-align:middle;
+    font-size:.68rem; font-weight:800; letter-spacing:.04em;
+    border-radius:999px; padding:2px 8px;
+  }
+  .when-status.open{background:#eef6f0; color:var(--ok)}
+  .when-actions{display:flex; align-items:center; gap:10px; font-size:.74rem}
+
+  .period{
+    background:#fff; border:1px solid #eaeef4; border-radius:14px;
+    padding:12px 14px; margin-bottom:12px;
+    box-shadow:0 4px 14px rgba(20,45,80,.06);
+  }
+  .period-head{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+  @media(max-width:420px){
+    .period-head{flex-direction:column; align-items:stretch}
+    .presets{justify-content:flex-start}
+  }
+  .period-title{font-size:.74rem; font-weight:800; color:var(--sub); letter-spacing:.05em}
+  .presets{display:flex; gap:6px}
+  .preset{
+    border:1px solid var(--line); background:#f7f8fb; color:var(--ink);
+    border-radius:999px; padding:5px 12px; font-size:.74rem; font-weight:700; cursor:pointer
+  }
+  .preset.on{background:var(--navy); color:#fff; border-color:var(--navy)}
+  .period-fields{
+    display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:end;
+  }
+  .period-fields .lbl{font-size:.68rem; font-weight:800; color:var(--sub); letter-spacing:.04em; margin-bottom:4px}
+  .period-fields input[type=date]{
+    font-size:16px; padding:10px 8px; min-width:0;
+  }
+  .period-fields .tilde{
+    padding-bottom:11px; color:var(--sub); font-weight:800; text-align:center;
+  }
+
+  .tally-top{
+    margin:0 2px 12px; font-size:.84rem; color:var(--sub); line-height:1.6;
+  }
+  .tally-top b{color:var(--ink); font-weight:800}
+  .tally-top .ok{color:var(--ok); font-weight:800}
+
+  .notice{
+    border:1px solid #e8d5a8; background:#fffaf0; color:#7a6224;
+    border-radius:10px; padding:9px 12px; font-size:.78rem; line-height:1.6; margin-bottom:12px;
+  }
+
+  .group-title{
+    display:flex; align-items:center; gap:8px;
+    margin:16px 2px 8px; font-size:.84rem; font-weight:800; letter-spacing:.04em;
+  }
+  .group-title::after{content:""; flex:1; height:1px; background:var(--line)}
+  .group-title.here{color:var(--ok)}
+  .group-title.yet{color:#a2aab7}
+
+  .b-card{
+    display:grid; gap:4px 12px; align-items:start;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:
+      "name  state"
+      "birth birth"
+      "age   age";
+    border-radius:14px; padding:14px 16px; margin-bottom:10px;
+  }
+  .b-card.arrived{
+    background:#fff; border:1px solid #d3e6da; border-left:6px solid var(--ok);
+    box-shadow:0 4px 14px rgba(20,45,80,.08);
+  }
+  .b-card.waiting{
+    background:#f2f4f7; border:1px solid #e6e9ef; box-shadow:none;
+  }
+  .b-card.plain{
+    background:#fff; border:1px solid #eaeef4;
+    box-shadow:0 4px 14px rgba(20,45,80,.06);
+  }
+
+  .c-name{grid-area:name; min-width:0}
+  .c-name .nm{font-size:1.5rem; font-weight:800; line-height:1.28; word-break:break-word}
+  .c-name .kn{display:block; font-size:1rem; margin-top:3px; line-height:1.3; word-break:break-word}
+  .arrived .c-name .nm,.plain .c-name .nm{color:var(--ink)}
+  .arrived .c-name .kn,.plain .c-name .kn{color:#5d6875}
+  .waiting .c-name .nm{color:#98a1ae; font-weight:700}
+  .waiting .c-name .kn{color:#b3bac4}
+
+  .c-state{grid-area:state}
+  .state-pill{display:inline-block; white-space:nowrap; border-radius:999px; font-weight:800}
+  .arrived .state-pill{background:var(--ok); color:#fff; padding:6px 13px; font-size:.82rem}
+  .waiting .state-pill{background:#e4e7ec; color:#98a1ae; padding:5px 11px; font-size:.76rem}
+
+  .c-birth{grid-area:birth; margin-top:4px; line-height:1.35}
+  .c-birth .md{font-size:1.18rem; font-weight:800}
+  .c-birth .yr{display:block; font-size:.72rem; font-weight:600; margin-top:2px}
+  .arrived .c-birth .md,.plain .c-birth .md{color:var(--ink)}
+  .arrived .c-birth .yr,.plain .c-birth .yr{color:#8a94a1}
+  .waiting .c-birth .md{color:#9aa3b0}
+  .waiting .c-birth .yr{color:#b3bac4}
+
+  .c-age{grid-area:age; font-size:.9rem; font-weight:700}
+  .arrived .c-age,.plain .c-age{color:var(--navy)}
+  .waiting .c-age{color:#aeb5c0}
+
+  .empty-msg{
+    background:#fff; border:1px solid #eaeef4; border-radius:14px;
+    padding:22px 16px; text-align:center; color:var(--sub); font-size:.86rem; line-height:1.7;
+  }
+
+  .foot-note{margin:16px 2px 0; font-size:.72rem; color:#a6adb8; line-height:1.7}
+
+  @media(min-width:860px){
+    .wrap{max-width:920px}
+    .b-card{
+      grid-template-columns:minmax(180px,1.2fr) 140px 90px 110px;
+      grid-template-areas:"name birth age state";
+      align-items:center;
+    }
+    .c-name .nm{font-size:1.22rem}
+    .c-name .kn{font-size:.86rem}
+    .c-birth .md{font-size:1.05rem}
+    .c-birth .yr{display:inline; margin-left:8px}
+  }
+
+  /* ---- 同じページ内のゲスト情報 ---- */
+  .g-card{
+    display:grid; gap:6px 12px; align-items:start;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:
+      "name  state"
+      "ref   ref"
+      "memo  memo"
+      "steps steps";
+    border-radius:14px; padding:14px 16px; margin-bottom:10px;
+  }
+  .g-card.arrived{
+    background:#fff; border:1px solid #d3e6da; border-left:6px solid var(--ok);
+    box-shadow:0 4px 14px rgba(20,45,80,.08);
+  }
+  .g-card.waiting{
+    background:#f2f4f7; border:1px solid #e6e9ef; box-shadow:none;
+  }
+  .c-ref{grid-area:ref; display:flex; align-items:baseline; gap:8px; min-width:0; margin-top:2px}
+  .c-ref .lbl{flex:none; font-size:.72rem; font-weight:800; letter-spacing:.04em; color:var(--sub)}
+  .c-ref .val{font-size:1.05rem; font-weight:700; line-height:1.4; word-break:break-word}
+  .arrived .c-ref .val{color:var(--ink)}
+  .waiting .c-ref .lbl{color:#b3bac4}
+  .waiting .c-ref .val{color:#9aa3b0}
+  .c-memo{grid-area:memo; font-size:.75rem; line-height:1.65; color:#98a0ad; word-break:break-word}
+  .c-memo:empty{display:none}
+  .c-memo .k{font-weight:700; color:#b0b7c2; margin-right:3px}
+  .c-memo .sep{margin:0 6px; color:#ccd2da}
+  .waiting .c-memo{color:#aeb5c0}
+  .c-steps{grid-area:steps}
+  .steps{display:flex; gap:5px; flex-wrap:wrap; list-style:none; margin:2px 0 0; padding:0}
+  .steps li{font-size:.68rem; font-weight:700; border-radius:999px; padding:2px 8px;
+    background:#f1f3f7; color:#b6bcc6; border:1px solid #eceff5}
+  .arrived .steps li.on{background:#e4f2ea; color:var(--ok); border-color:#c3ded0}
+  .c-steps:empty{display:none}
+  .g-tally{
+    margin:18px 2px 0; padding-top:12px; border-top:1px solid var(--line);
+    font-size:.78rem; color:var(--sub);
+  }
+  .g-tally b{color:var(--ink); font-weight:800}
+  .g-tally .ok{color:var(--ok); font-weight:800}
+  .g-thead{display:none}
+  @media(min-width:860px){
+    .g-thead,.g-card{
+      grid-template-columns:108px minmax(150px,1.1fr) minmax(120px,.9fr) 1.5fr 150px;
+      grid-template-areas:"state name ref memo steps";
+      align-items:center;
+    }
+    .g-thead{
+      display:grid; gap:0 12px; padding:0 16px 6px;
+      font-size:.7rem; font-weight:800; color:var(--sub); letter-spacing:.04em;
+    }
+    .g-card{gap:0 12px; padding:14px 16px}
+    .g-card .c-name .nm{font-size:1.22rem}
+    .g-card .c-name .kn{font-size:.86rem}
+    .g-card .c-ref{display:block; margin-top:0}
+    .g-card .c-ref .lbl{display:none}
+    .g-card .c-ref .val{font-size:1rem}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <nav class="page-switch" aria-label="このページの内容">
+    <button type="button" class="on" id="tab-birthday" data-panel="birthday">バースデー</button>
+    <button type="button" id="tab-guests" data-panel="guests">ゲスト情報</button>
+    <button type="button" id="tab-badge" data-panel="badge">バッジ贈呈</button>
+  </nav>
+</header>
+
+<div class="wrap">
+
+  <div class="when">
+    <span class="when-date" id="when-date"></span>
+    <span class="when-actions">
+      <span id="updated"></span>
+      <button type="button" class="btn small ghost" id="btn-reload">更新</button>
+    </span>
+  </div>
+
+  <div id="panel-birthday">
+  <div class="period">
+    <div class="period-head">
+      <span class="period-title">お祝いする期間</span>
+      <span class="presets">
+        <button type="button" class="preset" id="btn-week" data-preset="week">今週</button>
+        <button type="button" class="preset" id="btn-month" data-preset="month">今月</button>
+      </span>
+    </div>
+    <div class="period-fields">
+      <label>
+        <div class="lbl">いつから</div>
+        <input type="date" id="from-date">
+      </label>
+      <span class="tilde">〜</span>
+      <label>
+        <div class="lbl">いつまで</div>
+        <input type="date" id="to-date">
+      </label>
+    </div>
+  </div>
+
+  <p class="tally-top" id="tally"></p>
+  <div class="notice" id="notice" hidden></div>
+  <div id="list"><p class="empty-msg">読み込んでいます…</p></div>
+  <p class="foot-note">
+    見るだけのページです。来ている方だけお名前を呼ぶための一覧です。開いたときと、画面に戻ったときに最新を読みます。開いたままのときは右上の「更新」を押してください。<br>
+    生年月日は会員名簿から取り出しています。この URL は会長・六役以外に共有しないでください。
+  </p>
+  </div>
+
+  <div id="panel-guests" hidden>
+    <div class="notice" id="guest-notice" hidden></div>
+    <div id="guest-list"><p class="empty-msg">読み込んでいます…</p></div>
+    <p class="g-tally" id="guest-tally"></p>
+    <p class="foot-note">
+      見るだけのページです（内容の追加・修正は受付担当が行います）。<br>
+      ゲストの個人情報が含まれます。
+    </p>
+  </div>
+
+  <div id="panel-badge" hidden>
+    <p class="tally-top" id="badge-tally"></p>
+    <div class="notice" id="badge-notice" hidden></div>
+    <div id="badge-list"><p class="empty-msg">読み込んでいます…</p></div>
+    <p class="foot-note">
+      新入会員バッジを贈呈する方です。来ている方だけお名前を呼ぶための一覧です。<br>
+      受付で会員として登録されると「来ています」に変わります。
+    </p>
+  </div>
+
+</div>
+
+<script src="../meibo-data.js?v=20260914a"></script>
+<script src="config.js?v=20261006a"></script>
+<script src="app.js?v=20261007a"></script>
+<script src="badge-view.js?v=20261006a"></script>
+<script>
+(function () {
+  "use strict";
+  const K = window.UKETSUKE;
+  const U = K.U;
+  const RANGE_KEY = "rinri-birthday-range-v1";
+  let ATT = K.msAttendance();
+
+  U.who = { name: "", key: K.currentKey() };
+
+  let date = "";
+  let event = "";
+  let sessions = [];
+  let records = [];
+  let guests = [];
+  let badges = [];
+  let stale = false;
+  let loadedAt = "";
+  let loadedOnce = false; // 開いてから一度でもシートの最新を読めたか
+  let fromYmd = "";
+  let toYmd = "";
+  let preset = "";
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function ymdOf(dt) {
+    return dt.getFullYear() + "-" + pad(dt.getMonth() + 1) + "-" + pad(dt.getDate());
+  }
+  function parseYmd(s) {
+    const m = String(s || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const dt = new Date(+m[1], +m[2] - 1, +m[3]);
+    if (dt.getFullYear() !== +m[1] || dt.getMonth() !== +m[2] - 1 || dt.getDate() !== +m[3]) return null;
+    return dt;
+  }
+  function parseBirth(b) {
+    const m = String(b || "").match(/(\d{4})[/\-.年]\s*(\d{1,2})[/\-.月]\s*(\d{1,2})/);
+    return m ? { y: +m[1], mo: +m[2], d: +m[3] } : null;
+  }
+  function isLeap(y) { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+  function roster() {
+    const rows = (window.MEIBO_SNAPSHOT && window.MEIBO_SNAPSHOT.koukai) || [];
+    return rows.map(r => ({
+      id: String(r["会員番号"] || "").trim(),
+      name: String(r["氏名"] || "").replace(/\s+/g, " ").trim(),
+      kana: String(r["読み仮名"] || "").replace(/\s+/g, " ").trim(),
+      birth: String(r["生年月日"] || "").trim()
+    })).filter(m => m.name && parseBirth(m.birth));
+  }
+
+  function daysInRange(from, to) {
+    const a = parseYmd(from);
+    const b = parseYmd(to);
+    if (!a || !b) return [];
+    if (a > b) return daysInRange(to, from);
+    const out = [];
+    const d = new Date(a.getTime());
+    let guard = 0;
+    while (d <= b && guard++ < 400) {
+      out.push({ y: d.getFullYear(), mo: d.getMonth() + 1, day: d.getDate(), i: guard });
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  function birthdayHit(birth, days) {
+    const p = parseBirth(birth);
+    if (!p || !days.length) return null;
+    for (const day of days) {
+      if (p.mo === day.mo && p.d === day.day) return { p, day };
+      if (p.mo === 2 && p.d === 29 && day.mo === 2 && day.day === 28 && !isLeap(day.y)) {
+        return { p, day };
+      }
+    }
+    return null;
+  }
+
+  /* 受付日を初日にして、そこから1週間（火曜始まりなら翌週月曜まで）。 */
+  function weekRange(anchorYmd) {
+    const dt = parseYmd(anchorYmd) || new Date();
+    const from = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6);
+    return { from: ymdOf(from), to: ymdOf(to), preset: "week" };
+  }
+  function monthRange(anchorYmd) {
+    const dt = parseYmd(anchorYmd) || new Date();
+    const from = ymdOf(new Date(dt.getFullYear(), dt.getMonth(), 1));
+    const to = ymdOf(new Date(dt.getFullYear(), dt.getMonth() + 1, 0));
+    return { from, to, preset: "month" };
+  }
+  function detectPreset(from, to, anchorYmd) {
+    const w = weekRange(anchorYmd);
+    if (from === w.from && to === w.to) return "week";
+    const m = monthRange(anchorYmd);
+    if (from === m.from && to === m.to) return "month";
+    return "";
+  }
+  function rangeAnchor() { return date || K.todayYmd(); }
+  /* 自分で変えた期間は、そのとき見ていた回のあいだだけ使う。回が変われば受付日からの1週間に戻す。 */
+  function loadSavedRange(anchorYmd) {
+    try {
+      const p = JSON.parse(localStorage.getItem(RANGE_KEY) || "null");
+      if (p && p.anchor === anchorYmd && parseYmd(p.from) && parseYmd(p.to)) return p;
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+  function saveRange() {
+    try {
+      localStorage.setItem(RANGE_KEY, JSON.stringify({ from: fromYmd, to: toYmd, anchor: rangeAnchor() }));
+    } catch (e) { /* ignore */ }
+  }
+  let rangeAnchorShown = "";
+  function applyDefaultRange() {
+    const anchor = rangeAnchor();
+    if (anchor === rangeAnchorShown) return;
+    rangeAnchorShown = anchor;
+    applyRange(loadSavedRange(anchor) || weekRange(anchor), false);
+  }
+
+  function sessionInfo() {
+    return (sessions || []).find(s => s.date === date && s.event === event) || null;
+  }
+  function applyAttendance() {
+    ATT = K.attendanceForSession(sessionInfo(), event);
+  }
+  function isArrived(rec) {
+    return K.recordArrived(rec, ATT);
+  }
+  function shortLabel(a) { return K.attendShort(a, event); }
+  function findRecord(member) {
+    return K.findMemberRecord(records, member);
+  }
+
+  function people() {
+    const days = daysInRange(fromYmd, toYmd);
+    return roster().map(m => {
+      const hit = birthdayHit(m.birth, days);
+      if (!hit) return null;
+      const rec = findRecord(m);
+      const arrived = isArrived(rec);
+      return {
+        member: m,
+        hit,
+        rec,
+        arrived,
+        age: hit.day.y - hit.p.y,
+        order: hit.day.i
+      };
+    }).filter(Boolean);
+  }
+
+  function applyRange(range, persist) {
+    fromYmd = range.from;
+    toYmd = range.to;
+    preset = range.preset || detectPreset(fromYmd, toYmd, date || K.todayYmd());
+    document.getElementById("from-date").value = fromYmd;
+    document.getElementById("to-date").value = toYmd;
+    document.getElementById("btn-week").classList.toggle("on", preset === "week");
+    document.getElementById("btn-month").classList.toggle("on", preset === "month");
+    if (persist !== false) saveRange();
+  }
+
+  function renderHead() {
+    const el = document.getElementById("when-date");
+    if (!date) {
+      el.textContent = "受付中の回はありません（来場はまだ分かりません）";
+    } else {
+      const info = sessionInfo();
+      const badge = info && info.status === "受付中"
+        ? '<span class="when-status open">受付中</span>'
+        : "";
+      el.innerHTML = esc(K.jaDate(date) + (event ? "　" + event : "")) + badge;
+    }
+    document.getElementById("updated").innerHTML = loadedAt
+      ? `<span class="live-dot${stale ? " ng" : ""}"></span>${stale ? "最後に確認 " : "最新を確認 "}${esc(loadedAt)}`
+      : (stale ? "" : "最新を読み込んでいます…");
+  }
+  function staleText() {
+    if (!loadedOnce) return "最新の読み込みに時間がかかっています。いまは前回の内容を出しています（自動で読み直しています）。";
+    return "最新の読み込みに時間がかかっています。いまは " + loadedAt + " の時点の内容を出しています（自動で読み直しています）。";
+  }
+
+  function cardHtml(row, mode) {
+    const m = row.member;
+    const md = row.hit.p.mo + "月" + row.hit.p.d + "日";
+    const yr = row.hit.p.y + "年生まれ";
+    const klass = mode === "plain" ? "plain" : (row.arrived ? "arrived" : "waiting");
+    const state = mode === "plain"
+      ? ""
+      : `<div class="c-state"><span class="state-pill">${row.arrived ? "来ています" : "まだ"}</span></div>`;
+    return `<article class="b-card ${klass}">
+      <div class="c-name"><span class="nm">${esc(m.name)}</span>${
+        m.kana ? `<span class="kn">${esc(m.kana)}</span>` : ""}</div>
+      ${state}
+      <div class="c-birth"><span class="md">${esc(md)}</span><span class="yr">${esc(yr)}</span></div>
+      <div class="c-age">${row.age}歳</div>
+    </article>`;
+  }
+
+  function render() {
+    renderHead();
+    const list = people();
+    const hasSession = !!date;
+    const arrived = list.filter(r => r.arrived);
+    const waiting = list.filter(r => !r.arrived);
+    const byOrder = rows => rows.slice().sort((a, b) => a.order - b.order || a.member.kana.localeCompare(b.member.kana, "ja"));
+
+    const tally = document.getElementById("tally");
+    if (!list.length) {
+      tally.innerHTML = "";
+    } else if (hasSession) {
+      tally.innerHTML = `お祝い <b>${list.length}名</b>　／　来ています <span class="ok">${arrived.length}名</span>　／　まだ ${waiting.length}名`;
+    } else {
+      tally.innerHTML = `お祝い <b>${list.length}名</b>（受付が始まると、来ている方が上に出ます）`;
+    }
+
+    const notice = document.getElementById("notice");
+    notice.hidden = !stale;
+    if (stale) notice.textContent = staleText();
+
+    const box = document.getElementById("list");
+    if (!loadedOnce && !stale) {
+      tally.innerHTML = "";
+      box.innerHTML = `<p class="empty-msg">最新を読み込んでいます…</p>`;
+      return;
+    }
+    if (!fromYmd || !toYmd) {
+      box.innerHTML = `<p class="empty-msg">お祝いする期間を入れてください。</p>`;
+      return;
+    }
+    if (!list.length) {
+      box.innerHTML = `<p class="empty-msg">この期間にお誕生日の方は、名簿にいません。</p>`;
+      return;
+    }
+
+    if (!hasSession) {
+      box.innerHTML = byOrder(list).map(r => cardHtml(r, "plain")).join("");
+      return;
+    }
+
+    let html = "";
+    if (arrived.length) {
+      html += `<div class="group-title here">来ています（${arrived.length}名）</div>`;
+      html += byOrder(arrived).map(r => cardHtml(r, "attend")).join("");
+    }
+    if (waiting.length) {
+      html += `<div class="group-title yet">まだ来ていません（${waiting.length}名）</div>`;
+      html += byOrder(waiting).map(r => cardHtml(r, "attend")).join("");
+    }
+    box.innerHTML = html;
+  }
+
+  function guestCardHtml(r) {
+    const arrived = isArrived(r);
+    const memo = [];
+    if (r.attendant) memo.push(`<span class="k">アテンド</span>${esc(K.formatAttendants(r.attendant))}`);
+    if (r.note) memo.push(`<span class="k">備考</span>${esc(r.note)}`);
+    const steps = arrived
+      ? `<ul class="steps">${ATT.map(a =>
+          `<li class="${r[a.key] ? "on" : ""}">${esc(shortLabel(a))}</li>`).join("")}</ul>`
+      : "";
+    return `<article class="g-card ${arrived ? "arrived" : "waiting"}">
+      <div class="c-name"><span class="nm">${esc(r.name)}</span>${
+        r.kana ? `<span class="kn">${esc(r.kana)}</span>` : ""}</div>
+      <div class="c-state"><span class="state-pill">${arrived ? "来ています" : "まだ"}</span></div>
+      <div class="c-ref"><span class="lbl">紹介者</span><span class="val">${
+        esc(r.referrer || "—")}</span></div>
+      <div class="c-memo">${memo.join('<span class="sep">／</span>')}</div>
+      <div class="c-steps">${steps}</div>
+    </article>`;
+  }
+
+  function renderGuests() {
+    const arrived = guests.filter(isArrived);
+    const waiting = guests.filter(r => !isArrived(r));
+    document.getElementById("guest-tally").innerHTML = guests.length
+      ? `ゲスト <b>${guests.length}名</b>　／　来ています <span class="ok">${arrived.length}名</span>　／　まだ ${waiting.length}名`
+      : "";
+    const gNotice = document.getElementById("guest-notice");
+    gNotice.hidden = !stale;
+    if (stale) gNotice.textContent = staleText();
+    const box = document.getElementById("guest-list");
+    if (!loadedOnce && !stale) {
+      box.innerHTML = `<p class="empty-msg">最新を読み込んでいます…</p>`;
+      return;
+    }
+    if (!date) {
+      box.innerHTML = `<p class="empty-msg">受付担当が次の受付を開始すると、ここにゲスト情報が出ます。</p>`;
+      return;
+    }
+    if (!guests.length) {
+      box.innerHTML = stale
+        ? `<p class="empty-msg">最新の読み込みに時間がかかっています。<br>自動で読み直していますので、少しお待ちください。</p>`
+        : `<p class="empty-msg">この回のゲストは、まだ登録されていません。<br>受付担当が入力したら、右上の「更新」で出てきます。</p>`;
+      return;
+    }
+    const byOrder = list => list.slice().sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+    let html = `<div class="g-thead"><span>状態</span><span>お名前</span><span>紹介者</span><span>メモ</span><span>出席</span></div>`;
+    if (arrived.length) {
+      html += `<div class="group-title here">来ています（${arrived.length}名）</div>`;
+      html += byOrder(arrived).map(guestCardHtml).join("");
+    }
+    if (waiting.length) {
+      html += `<div class="group-title yet">まだ来ていません（${waiting.length}名）</div>`;
+      html += byOrder(waiting).map(guestCardHtml).join("");
+    }
+    box.innerHTML = html;
+  }
+
+  function renderBadges() {
+    const bNotice = document.getElementById("badge-notice");
+    bNotice.hidden = !stale;
+    if (stale) bNotice.textContent = staleText();
+    const box = document.getElementById("badge-list");
+    if (!loadedOnce && !stale) {
+      box.innerHTML = `<p class="empty-msg">最新を読み込んでいます…</p>`;
+      document.getElementById("badge-tally").innerHTML = "";
+      return;
+    }
+    const t = BadgeView.render(box, badges, records, { hasSession: !!date });
+    document.getElementById("badge-tally").innerHTML = BadgeView.tallyHtml(t, !!date);
+  }
+
+  function renderAll() {
+    render();
+    renderGuests();
+    renderBadges();
+  }
+
+  /* 開いたとき・画面に戻ったとき・「更新」でシートの最新を読む。
+     この端末に残っている前回分は、つながらないときの控えとしてだけ使う。 */
+  async function loadLive() {
+    const live = await K.fetchLive();
+    sessions = U.sessions || [];
+    if (live.session) {
+      date = live.session.date;
+      event = live.session.event;
+    } else {
+      date = "";
+      event = "";
+    }
+    applyAttendance();
+    records = live.records.filter(r => r.type === "member");
+    guests = live.records.filter(r => r.type === "guest");
+    badges = live.badges || [];
+    K.writeBadgeCache(live.badgeDate, badges);
+    applyDefaultRange();
+    stale = false;
+    loadedOnce = true;
+    loadedAt = K.nowHms();
+    renderAll();
+  }
+  function onLiveError() {
+    if (!loadedOnce) {
+      sessions = K.sessionsFromLocal();
+      const open = K.findOpenSessions();
+      date = open.length ? open[0].date : "";
+      event = open.length ? open[0].event : "";
+      applyAttendance();
+      const all = date ? K.recordsFromLocal(date, event) : [];
+      records = all.filter(r => r.type === "member");
+      guests = all.filter(r => r.type === "guest");
+      badges = K.readBadgeCache(date || K.todayYmd());
+      applyDefaultRange();
+    }
+    stale = true;
+    renderAll();
+  }
+
+  let poller = null;
+  document.getElementById("btn-reload").addEventListener("click", async () => {
+    if (!poller) return;
+    const btn = document.getElementById("btn-reload");
+    btn.disabled = true;
+    btn.textContent = "更新中…";
+    try { await poller.now(); }
+    finally { btn.disabled = false; btn.textContent = "更新"; }
+  });
+
+  function onManualRange() {
+    const from = document.getElementById("from-date").value;
+    const to = document.getElementById("to-date").value;
+    if (!from || !to) return;
+    applyRange({ from, to, preset: detectPreset(from, to, date || K.todayYmd()) });
+    render();
+  }
+  document.getElementById("from-date").addEventListener("change", onManualRange);
+  document.getElementById("to-date").addEventListener("change", onManualRange);
+  document.getElementById("btn-week").addEventListener("click", () => {
+    applyRange(weekRange(date || K.todayYmd()));
+    render();
+  });
+  document.getElementById("btn-month").addEventListener("click", () => {
+    applyRange(monthRange(date || K.todayYmd()));
+    render();
+  });
+
+  /* 上の切り替え。開き直しても同じタブに戻れるよう、URL の # に残す */
+  const PANELS = ["birthday", "guests", "badge"];
+  function showPanel(name) {
+    if (PANELS.indexOf(name) < 0) name = "birthday";
+    PANELS.forEach(p => {
+      document.getElementById("panel-" + p).hidden = p !== name;
+      document.getElementById("tab-" + (p === "guests" ? "guests" : p)).classList.toggle("on", p === name);
+    });
+    try { history.replaceState(null, "", location.pathname + location.search + (name === "birthday" ? "" : "#" + name)); } catch (e) { /* ignore */ }
+  }
+  document.querySelectorAll(".page-switch button[data-panel]").forEach(b => {
+    b.addEventListener("click", () => showPanel(b.dataset.panel));
+  });
+
+  (function boot() {
+    applyDefaultRange();
+    showPanel(location.hash.replace("#", ""));
+    renderAll();
+    poller = K.startLivePolling({ load: loadLive, onError: onLiveError });
+  })();
+})();
+</script>
+</body>
+</html>

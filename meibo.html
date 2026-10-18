@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>会員名簿 | 大阪みなと倫理法人会</title>
+
+<!-- ============================================================
+     ▼ 設定：スプレッドシートを「ウェブに公開(CSV)」してURLを貼る
+       KOUKAI … 「公開用」タブ（役職＝単会。研究所辞令は別列があれば使う）※必須
+       SETTEI … 「設定」タブ（単会・研究所辞令の並び順）
+     ページを開いたときは保持データを表示し、「更新」でシートを取りに行く。
+     サイト全体を最新にするには portal/update-meibo.py のあと deploy.command。
+
+     顔写真はシートのセルに貼らない。
+     photos/{会員番号}.jpg を置き、photos/manifest.json の ids に載せると表示される。
+     手順は portal/prepare-photos.py（photos-inbox に元画像を入れる）。
+     ============================================================ -->
+<script>
+  const CONFIG = {
+    KOUKAI_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4bLuHafLVVuZsVg64IHEhYHtJVJTdbIKCLdO4_OQ_q4JO9vXdRlKvloFl_FfIp6YkSiJoYKLl5HLN/pub?gid=548606881&single=true&output=csv",
+    SETTEI_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4bLuHafLVVuZsVg64IHEhYHtJVJTdbIKCLdO4_OQ_q4JO9vXdRlKvloFl_FfIp6YkSiJoYKLl5HLN/pub?gid=943030109&single=true&output=csv",
+    PHOTO_BASE_URL: "photos/",
+    ORG_NAME: "大阪みなと倫理法人会",
+    SUBTITLE: "会員名簿"
+  };
+
+  /* 列名は揺れに強く：候補の最初に見つかったものを使う */
+  const FIELD = {
+    id:      ["会員番号"],
+    company: ["会社名"],
+    name:    ["氏名","指名","申込者名"],
+    kana:    ["読み仮名","ふりがな","フリガナ"],
+    birth:   ["生年月日"],
+    joined:  ["入会月"],
+    referrer:["紹介者"],
+    role:    ["単会の役職","役職（単会）","単会役職","役職"],
+    roleKen: ["研究所辞令の役職","研究所辞令役職","役職（研究所辞令）","研究所辞令"],
+    status:  ["在籍状況"],
+    team:    ["チーム名","チーム"],
+    committee:["委員会"],
+    photo:   ["写真","顔写真","写真URL"]
+  };
+  /* 在籍状況がこれに当たる人は名簿に出さない */
+  const HIDDEN_STATUS = /^(仮|入会手続き中)$|退会|除籍/;
+
+  /* ===== サンプル（実タブの構造に合わせています） ===== */
+  const SAMPLE_KOUKAI = [
+    {会員番号:"00294376",会社名:"成光精密（株）",氏名:"高満　洋徳",読み仮名:"たかみつ　ひろのり",生年月日:"1976/12/08",入会月:"2010/08",紹介者:"浜野　太郎",役職:""},
+    {会員番号:"00295699",会社名:"セントオーディン",氏名:"永井　純",読み仮名:"ながい　じゅん",生年月日:"1963/02/17",入会月:"2010/08",紹介者:"鈴木　憲二郎",役職:"",チーム名:"チーム未来",委員会:"文教委員会"},
+    {会員番号:"00308651",会社名:"（株）アジア美容研究所",氏名:"田頭　一之",読み仮名:"たがしら　かずゆき",生年月日:"1954/12/02",入会月:"2011/05",紹介者:"川邊　礼子",役職:"相談役"},
+    {会員番号:"00446515",会社名:"（株）エス・ケイエンジニアリング",氏名:"玉元　宗児",読み仮名:"たまもと　しゅうじ",生年月日:"1969/10/17",入会月:"2016/07",紹介者:"鈴木　昭彦",役職:"事務長（3役）"},
+    {会員番号:"00447101",会社名:"井上英孝事務所",氏名:"速水　眞二",読み仮名:"はやみ　しんじ",生年月日:"1958/07/29",入会月:"2016/07",紹介者:"安本　清一",役職:"監査"},
+    {会員番号:"00449997",会社名:"（株）アレーズヴェルチュ",氏名:"佐治　瑞枝",読み仮名:"さじ　みずえ",生年月日:"1957/03/05",入会月:"2016/07",紹介者:"田頭　一之",役職:"相談役"},
+    {会員番号:"00453529",会社名:"（株）ディーマン",氏名:"野口　政隆",読み仮名:"のぐち　まさたか",生年月日:"",入会月:"2016/10",紹介者:"田頭　一之",役職:"副会長（6役）"},
+    {会員番号:"00487866",会社名:"（株）ポータル",氏名:"中辻　順",読み仮名:"なかつじ　じゅん",生年月日:"1963/08/29",入会月:"2019/02",紹介者:"佐治　瑞枝",役職:""},
+    {会員番号:"00509671",会社名:"（同）ＯＳＫＣ",氏名:"住本　悦法",読み仮名:"すみもと　えつのり",生年月日:"1969/07/04",入会月:"2020/09",紹介者:"佐治　瑞枝",役職:""},
+    {会員番号:"00514088",会社名:"Ｆａｍｉｌｙ　Ｐａｒｔｎｅｒｓ",氏名:"菅原　広嗣",読み仮名:"すがはら　ひろつぐ",生年月日:"1980/12/23",入会月:"2021/02",紹介者:"中辻　順",役職:"専任幹事（3役）"},
+    {会員番号:"00517151",会社名:"（株）リーガルエージェンシー",氏名:"山岡　真一",読み仮名:"やまおか　しんいち",生年月日:"1974/06/15",入会月:"2021/05",紹介者:"住本　悦法",役職:""},
+    {会員番号:"00517880",会社名:"ＣＩＥＬ",氏名:"井谷　祐子",読み仮名:"いたに　ゆうこ",生年月日:"1966/05/01",入会月:"2021/06",紹介者:"朝日　里佳",役職:""},
+    {会員番号:"00522434",会社名:"Ｃｏｒｅ　Ｃｒｏｗｄ",氏名:"梶井　洋志",読み仮名:"かじい　ひろし",生年月日:"1983/05/30",入会月:"2021/08",紹介者:"中辻　順",役職:""},
+    {会員番号:"00532132",会社名:"関西学院大学",氏名:"中村　美由",読み仮名:"なかむら　みゆ",生年月日:"1993/07/09",入会月:"2022/04",紹介者:"恩地　隆太",役職:""}
+  ];
+  /* 設定＝行の配列（ヘッダーなし想定）：期の開始日 と 役職リスト/表示順 */
+  const SAMPLE_SETTEI = [
+    ["各期の開始日（毎年9/1が基本）","","","","","","",""],
+    ["期","開始日","","","","","役職リスト","表示順"],
+    ["8期","2025/09/01","","","","","会長","1"],
+    ["9期","2026/09/01","","","","","専任幹事（3役）","2"],
+    ["10期","2027/09/01","","","","","事務長（3役）","2"],
+    ["11期","2028/09/01","","","","","副専任幹事（6役）","3"],
+    ["","","","","","","副事務局長（6役）","3"],
+    ["","","","","","","副会長（6役）","3"],
+    ["","","","","","","相談役","4"],
+    ["","","","","","","監査","4"],
+    ["","","","","","","副地区長","4"],
+    ["","","","","","","副専任幹事","5"],
+    ["","","","","","","副事務局長","5"],
+    ["","","","","","","副会長","5"],
+    ["","","","","","","MS副委員長","5"],
+    ["","","","","","","幹事","6"],
+    ["","","","","","","実行委員","7"]
+  ];
+</script>
+
+<style>
+  :root{ --navy:#0f2f4f; --navy-2:#14395f; --accent:#c8a24a; --bg:#f4f6f9; --card:#fff;
+    --ink:#1a2230; --sub:#7a8699; --line:#e6eaf0; --shadow:0 6px 22px rgba(20,45,80,.10); }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;}
+  a.back{position:relative;z-index:1;display:inline-block;color:rgba(255,255,255,.82);text-decoration:none;font-size:.78rem;font-weight:700;margin-bottom:10px}
+  a.back:hover{color:#fff}
+  header.top{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;padding:20px 20px 16px;position:relative;overflow:hidden}
+  header.top::after{content:"";position:absolute;right:-40px;top:-40px;width:170px;height:170px;background:radial-gradient(circle,rgba(200,162,74,.32),transparent 70%)}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .brand .org{font-size:1.02rem;font-weight:700;letter-spacing:.04em}
+  .brand .sub{font-size:1.45rem;font-weight:800;letter-spacing:.06em}
+  .accent-bar{height:3px;width:44px;background:var(--accent);border-radius:2px;display:block;margin-top:7px}
+  .toolbar{max-width:1140px;margin:14px auto 0;padding:0 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .search{flex:1;min-width:170px;position:relative}
+  .search input{width:100%;padding:11px 14px 11px 38px;border:1px solid var(--line);border-radius:10px;font-size:1rem;background:#fff;outline:none}
+  .search input:focus{border-color:var(--accent)}
+  .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);opacity:.45}
+  select.ctrl{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:.9rem;font-weight:600;color:var(--ink);outline:none}
+  .toggle{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .toggle button{border:0;background:transparent;padding:10px 15px;font-size:.9rem;font-weight:700;color:var(--sub);cursor:pointer;display:flex;align-items:center;gap:6px}
+  .toggle button.active{background:var(--navy);color:#fff}
+  .meta-line{max-width:1140px;margin:10px auto 0;padding:0 18px;color:var(--sub);font-size:.83rem;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .term-pill{background:rgba(200,162,74,.16);border:1px solid rgba(200,162,74,.5);color:var(--navy);font-weight:700;border-radius:20px;padding:2px 10px}
+  .fetched{font-weight:700;color:#54617a}
+  button.refresh{border:1px solid var(--navy);background:#fff;color:var(--navy);font-weight:800;font-size:.82rem;
+    border-radius:10px;padding:6px 12px;cursor:pointer}
+  button.refresh:hover{background:var(--navy);color:#fff}
+  button.refresh.stale{border-color:var(--accent);color:#8a6a20;background:rgba(200,162,74,.14)}
+  button.refresh:disabled{opacity:.55;cursor:wait}
+  .stale-note{color:#8a6a20;font-weight:700}
+  .refresh-msg{color:#2b6a4a;font-weight:700}
+  main{max-width:1140px;margin:8px auto 60px;padding:12px 16px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .mcard{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:18px;display:flex;gap:15px;align-items:center;border:1px solid #eef1f6;position:relative;overflow:hidden}
+  .mcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--team,var(--accent))}
+  .avatar{width:76px;height:76px;border-radius:14px;flex:0 0 auto;object-fit:cover;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1.8rem;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+  .mcard .info{min-width:0;flex:1}
+  .role-badge{display:inline-block;font-size:.72rem;font-weight:700;color:var(--navy);background:rgba(200,162,74,.16);border:1px solid rgba(200,162,74,.5);padding:2px 9px;border-radius:20px;margin-bottom:5px}
+  .kana{font-size:.8rem;color:var(--sub);letter-spacing:.05em;margin:0}
+  .name{font-size:1.45rem;font-weight:800;line-height:1.2;margin:1px 0 6px}
+  .meta{font-size:.72rem;color:var(--sub);line-height:1.55;word-break:break-all;
+    display:grid;grid-template-columns:auto 1fr;column-gap:8px;row-gap:1px}
+  .meta b{color:#54617a;font-weight:600}
+  .birth-extra{display:block;font-size:.68rem;color:var(--sub);font-weight:500;margin-top:1px;white-space:nowrap}
+  .years{display:inline-block;font-size:.74rem;font-weight:700;color:#2b6a4a;background:#e7f5ee;padding:2px 9px;border-radius:20px}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .team-chip{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:800;line-height:1.4;color:var(--team);background:var(--team-bg);border:1px solid var(--team-bd);padding:1px 9px 1px 7px;border-radius:20px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .team-chip svg{flex:0 0 auto}
+  .status-badge{display:inline-block;font-size:.7rem;font-weight:700;color:#6b5a2a;background:#f6efd9;border:1px dashed #cdb36a;padding:1px 8px;border-radius:20px;margin:0 0 5px 4px}
+  .t-committee{display:block;font-size:.7rem;color:var(--sub);margin-top:3px}
+  .table-wrap{overflow-x:auto;background:#fff;border-radius:14px;box-shadow:var(--shadow);border:1px solid #eef1f6}
+  table{border-collapse:collapse;width:100%;min-width:860px}
+  thead th{background:var(--navy);color:#fff;font-size:.76rem;font-weight:700;padding:11px 12px;text-align:left;white-space:nowrap;cursor:pointer;user-select:none}
+  thead th .ar{opacity:.5;font-size:.7rem;margin-left:3px}
+  thead th.sorted{background:#1c4a75}
+  tbody td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tbody tr:hover{background:#fafbfe}
+  .t-avatar{width:40px;height:40px;border-radius:9px;object-fit:cover;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1rem}
+  .t-name{font-size:1.1rem;font-weight:800;line-height:1.15}
+  .t-kana{font-size:.72rem;color:var(--sub)}
+  .t-role{font-weight:700;color:var(--navy);font-size:.9rem}
+  .t-years{font-weight:700;color:#2b6a4a;white-space:nowrap;font-size:.82rem}
+  .t-small{font-size:.72rem;color:var(--sub)}
+  .empty{text-align:center;color:var(--sub);padding:50px 0}
+  @media(max-width:560px){ .brand .sub{font-size:1.25rem} .cards{grid-template-columns:1fr} .name{font-size:1.35rem} .search{order:5;flex-basis:100%} }
+</style>
+</head>
+<body>
+<script src="portal-nav.js?v=20261018a" data-page="会員名簿"></script>
+<header class="top">
+  <div class="brand"><span class="org" id="orgName"></span><span class="sub" id="subTitle"></span></div>
+  <span class="accent-bar"></span>
+</header>
+
+<div class="toolbar">
+  <div class="search">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+    <input id="q" type="search" placeholder="氏名・読み・会社・役職・チームで検索…">
+  </div>
+  <select id="teamSel" class="ctrl" title="チームで絞り込み">
+    <option value="">すべてのチーム</option>
+  </select>
+  <select id="sortSel" class="ctrl" title="並び替え">
+    <option value="role">役職順</option>
+    <option value="roleKen">役職順（研究所辞令）</option>
+    <option value="team">チーム順</option>
+    <option value="joined">入会月順</option>
+    <option value="birth">誕生日順</option>
+    <option value="kana">読み仮名順</option>
+  </select>
+  <div class="toggle">
+    <button id="btnCard" onclick="setView('card')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/></svg>カード
+    </button>
+    <button id="btnTable" class="active" onclick="setView('table')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>リスト
+    </button>
+  </div>
+</div>
+
+<div class="meta-line">
+  <span id="count"></span>
+  <span class="fetched" id="fetchedAt"></span>
+  <button type="button" class="refresh" id="btnRefresh">更新</button>
+  <span class="stale-note" id="staleNote"></span>
+  <span class="refresh-msg" id="refreshMsg"></span>
+</div>
+<main id="app"></main>
+
+<script src="meibo-data.js"></script>
+<script>
+  let VIEW="table", SORT="role";
+  let MEMBERS=[], KEY={};                 /* KEY = 実列名の解決結果 */
+  let ROLEORDER={}, ROLEORDER_KEN={};
+  let HELD_AT=null;
+  let PHOTO_IDS=new Set();
+  const STORE_KEY="rinri-meibo-cache-v2";
+  document.getElementById("orgName").textContent=CONFIG.ORG_NAME;
+  document.getElementById("subTitle").textContent=CONFIG.SUBTITLE;
+
+  const esc=s=>(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const norm=s=>(s||"").replace(/\s|　/g,"");
+
+  function resolveKeys(row){
+    const keys=Object.keys(row||{});
+    const fold=s=>String(s||"").replace(/\s|　|\n|\r/g,"");
+    const out={};
+    for(const f in FIELD){
+      const cands=FIELD[f];
+      let hit=cands.find(c=>keys.includes(c));
+      if(!hit){
+        const folded=keys.map(k=>({k, f:fold(k)}));
+        hit=(cands.map(c=>folded.find(x=>x.f===fold(c))).find(Boolean)||{}).k;
+      }
+      out[f]=hit||cands[0];
+    }
+    if(!keys.includes(out.roleKen)){
+      const ken=keys.find(k=>/研究所|辞令/.test(k) && /役職/.test(k));
+      if(ken) out.roleKen=ken;
+    }
+    return out;
+  }
+  const get=(m,f)=>m[KEY[f]];
+
+  function joinYears(j){ if(!j) return null;
+    const m=String(j).match(/(\d{4})[\/\-.年]?\s*(\d{1,2})?/); if(!m) return null;
+    const y=+m[1], mo=m[2]?+m[2]:1, now=new Date(); let e=now.getFullYear()-y;
+    if(now.getMonth()+1<mo) e-=1; return e<0?null:e+1; }
+  function joinKey(j){ const m=String(j||"").match(/(\d{4})[\/\-.年]?\s*(\d{1,2})?/); return m?(+m[1])*100+(m[2]?+m[2]:0):999999; }
+  function parseBirth(b){
+    const m=String(b||"").match(/(\d{4})[\/\-.年]\s*(\d{1,2})[\/\-.月]\s*(\d{1,2})/);
+    return m?{y:+m[1], mo:+m[2], d:+m[3]}:null;
+  }
+  function birthKey(b){ const p=parseBirth(b); return p?p.mo*100+p.d:9999; }
+  function fmtBirth(b){ const p=parseBirth(b); return p?`${p.mo}月${p.d}日`:(String(b||"").trim()||"—"); }
+  function ageOf(b){
+    const p=parseBirth(b); if(!p) return null;
+    const now=new Date();
+    let a=now.getFullYear()-p.y;
+    if((now.getMonth()+1)*100+now.getDate() < p.mo*100+p.d) a-=1;
+    return a>=0?a:null;
+  }
+  function fmtBirthExtra(b){
+    const p=parseBirth(b); if(!p) return "";
+    const a=ageOf(b);
+    return `${p.y}年生まれ`+(a!=null?`・${a}歳`:"");
+  }
+  function birthCell(b){
+    const extra=fmtBirthExtra(b);
+    return extra?`${esc(fmtBirth(b))}<span class="birth-extra">${esc(extra)}</span>`:esc(fmtBirth(b));
+  }
+  function photoURL(v, id){
+    v=(v||"").trim();
+    if(v){
+      const m=v.match(/https?:\/\/[^\s"'<>)]+/i);
+      if(m) return m[0];
+      if(/\.(jpe?g|png|webp|gif)$/i.test(v)) return (CONFIG.PHOTO_BASE_URL||"")+v.replace(/^photos\//,"");
+    }
+    const n=String(id||"").trim();
+    if(n && PHOTO_IDS.has(n)) return (CONFIG.PHOTO_BASE_URL||"")+n+".jpg";
+    return null;
+  }
+  const AVC=["#3a6ea5","#c8632b","#2e8b6b","#8b5cf6","#b03a5b","#0f7f9e","#a06a1b","#5c6bc0"];
+  function avColor(n){let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;return AVC[h%AVC.length];}
+  function firstChar(n){return (n||"？").replace(/\s|　/g,"").charAt(0);}
+
+  /* 設定 → 単会は G/H列、研究所辞令は I/J列 */
+  function parseSettei(rows){
+    ROLEORDER={}; ROLEORDER_KEN={};
+    (rows||[]).forEach(r=>{
+      const a=(r[6]||"").trim(), ao=(r[7]||"").trim();
+      if(a && /^\d+$/.test(ao) && !a.includes("役職リスト")) ROLEORDER[a]=+ao;
+      const b=(r[8]||"").trim(), bo=(r[9]||"").trim();
+      if(b && /^\d+$/.test(bo) && !b.includes("役職リスト")) ROLEORDER_KEN[b]=+bo;
+    });
+  }
+  function roleOrderOf(role, map){
+    map=map||ROLEORDER;
+    if(!role) return 999;
+    if(map[role]!=null) return map[role];
+    const base=role.replace(/（.*?）|\(.*?\)/g,"").trim();
+    return map[base]!=null?map[base]:900;
+  }
+
+  /* チームの色はチーム名の五十音順に割り当てる（同じ名簿なら毎回同じ色） */
+  const TEAM_COLORS=[
+    {c:"#2f6fb0",bg:"#eaf2fb",bd:"#bcd4ee"},{c:"#c0592a",bg:"#fcefe8",bd:"#f0c8b4"},
+    {c:"#23866a",bg:"#e6f5f0",bd:"#b3dfd1"},{c:"#7b52d6",bg:"#f1ecfc",bd:"#d3c4f3"},
+    {c:"#b23a62",bg:"#fbeaf0",bd:"#efbfd0"},{c:"#0d7f99",bg:"#e5f4f8",bd:"#b0dce7"},
+    {c:"#9a6a12",bg:"#faf1df",bd:"#ead1a0"},{c:"#4c5bb8",bg:"#ebedfa",bd:"#c3c9ee"}
+  ];
+  let TEAMS=[];
+  function teamStyle(t){
+    const i=TEAMS.indexOf(t); if(i<0) return "";
+    const p=TEAM_COLORS[i%TEAM_COLORS.length];
+    return `--team:${p.c};--team-bg:${p.bg};--team-bd:${p.bd}`;
+  }
+  const TEAM_ICON=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2c2.4-.2 4.1 1.4 4.6 4.3"/></svg>`;
+  function teamChip(m){
+    return m._team?`<span class="team-chip" style="${teamStyle(m._team)}" title="チーム">${TEAM_ICON}${esc(m._team)}</span>`:"";
+  }
+
+  function decorate(){
+    MEMBERS.forEach(m=>{
+      m._role=(get(m,"role")||"").trim();
+      m._roleKen=(get(m,"roleKen")||"").trim();
+      m._ro=roleOrderOf(m._role, ROLEORDER);
+      m._roKen=roleOrderOf(m._roleKen, ROLEORDER_KEN);
+      m._team=(get(m,"team")||"").trim();
+      m._committee=(get(m,"committee")||"").trim();
+      m._status=(get(m,"status")||"").trim();
+      const ti=TEAMS.indexOf(m._team);
+      m._teamOrder=ti<0?999:ti;
+    });
+  }
+  function fillTeamSelect(){
+    const sel=document.getElementById("teamSel"), cur=sel.value;
+    const hasNone=MEMBERS.some(m=>!(get(m,"team")||"").trim());
+    sel.innerHTML=`<option value="">すべてのチーム</option>`
+      +TEAMS.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("")
+      +(TEAMS.length&&hasNone?`<option value="__none">チームなし</option>`:"");
+    sel.value=[...sel.options].some(o=>o.value===cur)?cur:"";
+    sel.style.display=TEAMS.length?"":"none";
+  }
+  function shownRole(m){ return SORT==="roleKen" ? m._roleKen : m._role; }
+  function sortRows(rows){ const a=[...rows];
+    if(SORT==="joined") a.sort((x,y)=>joinKey(get(x,"joined"))-joinKey(get(y,"joined")) || norm(get(x,"kana")).localeCompare(norm(get(y,"kana")),'ja'));
+    else if(SORT==="birth") a.sort((x,y)=>birthKey(get(x,"birth"))-birthKey(get(y,"birth")));
+    else if(SORT==="kana") a.sort((x,y)=>(get(x,"kana")||"").localeCompare(get(y,"kana")||"",'ja'));
+    else if(SORT==="roleKen") a.sort((x,y)=>(x._roKen-y._roKen) || joinKey(get(x,"joined"))-joinKey(get(y,"joined")));
+    else if(SORT==="role") a.sort((x,y)=>(x._ro-y._ro) || joinKey(get(x,"joined"))-joinKey(get(y,"joined")));
+    else if(SORT==="team") a.sort((x,y)=>(x._teamOrder-y._teamOrder) || (x._ro-y._ro) || joinKey(get(x,"joined"))-joinKey(get(y,"joined")));
+    return a; }
+  function filterRows(){ const q=(document.getElementById("q").value||"").trim().toLowerCase(); let rows=MEMBERS;
+    const team=document.getElementById("teamSel").value;
+    if(team==="__none") rows=rows.filter(m=>!m._team);
+    else if(team) rows=rows.filter(m=>m._team===team);
+    if(q) rows=rows.filter(m=>[get(m,"name"),get(m,"kana"),get(m,"company"),get(m,"referrer"),m._role,m._roleKen,m._team,m._committee].map(v=>String(v||"")).join(" ").toLowerCase().includes(q));
+    return sortRows(rows); }
+  function statusBadge(m){
+    return m._status && m._status!=="在籍" ? `<span class="status-badge">${esc(m._status)}</span>` : "";
+  }
+
+  function memAvatar(m,cls){ const p=photoURL(get(m,"photo"), get(m,"id")); const name=get(m,"name")||"";
+    return p?`<img class="${cls}" src="${esc(p)}" alt="" onerror="this.outerHTML='<div class=\\'${cls}\\' style=\\'background:${avColor(name)}\\'>${esc(firstChar(name))}</div>'">`
+            :`<div class="${cls}" style="background:${avColor(name)}">${esc(firstChar(name))}</div>`; }
+
+  function renderCards(rows){ if(!rows.length) return `<div class="empty">該当する会員が見つかりません</div>`;
+    return `<div class="cards">`+rows.map(m=>{ const yrs=joinYears(get(m,"joined"));
+      const head=(shownRole(m)?`<span class="role-badge">${esc(shownRole(m))}</span>`:"")+statusBadge(m);
+      const tags=(yrs?`<span class="years">入会 ${yrs}年目</span>`:"")+teamChip(m);
+      return `<div class="mcard" style="${teamStyle(m._team)}">${memAvatar(m,"avatar")}<div class="info">
+        ${head?head+"<br>":""}
+        <p class="kana">${esc(get(m,"kana")||"")}</p>
+        <h3 class="name">${esc(get(m,"name")||"")}</h3>
+        <div class="meta"><b>会社</b><span>${esc(get(m,"company")||"—")}</span><b>誕生日</b><span>${birthCell(get(m,"birth"))}</span><b>紹介者</b><span>${esc(get(m,"referrer")||"—")}</span>${m._committee?`<b>委員会</b><span>${esc(m._committee)}</span>`:""}</div>
+        ${tags?`<div class="tags">${tags}</div>`:""}
+      </div></div>`; }).join("")+`</div>`; }
+  function th(label,key){ const on=SORT===key; return `<th class="${on?'sorted':''}" onclick="setSort('${key}')">${label}<span class="ar">${on?'▲':'⇅'}</span></th>`; }
+  function renderTable(rows){ if(!rows.length) return `<div class="empty">該当する会員が見つかりません</div>`;
+    const body=rows.map(m=>{ const yrs=joinYears(get(m,"joined"));
+      return `<tr><td>${memAvatar(m,"t-avatar")}</td>
+        <td><div class="t-name">${esc(get(m,"name")||"")}</div><div class="t-kana">${esc(get(m,"kana")||"")}${statusBadge(m)}</div></td>
+        <td class="t-role">${esc(shownRole(m)||"—")}</td>
+        <td>${teamChip(m)||'<span class="t-small">—</span>'}${m._committee?`<span class="t-committee">${esc(m._committee)}</span>`:""}</td>
+        <td>${birthCell(get(m,"birth"))}</td>
+        <td>${esc(get(m,"joined")||"—")}<span class="t-years"> ${yrs?'('+yrs+'年目)':''}</span></td>
+        <td class="t-small">${esc(get(m,"company")||"—")}</td>
+        <td class="t-small">${esc(get(m,"referrer")||"—")}</td></tr>`; }).join("");
+    const roleHead=SORT==="roleKen"?"役職（研究所辞令）":"役職（単会）";
+    const roleKey=SORT==="roleKen"?"roleKen":"role";
+    return `<div class="table-wrap"><table><thead><tr><th></th>${th('氏名 / 読み仮名','kana')}${th(roleHead,roleKey)}${th('チーム / 委員会','team')}${th('誕生日','birth')}${th('入会','joined')}<th>会社名</th><th>紹介者</th></tr></thead><tbody>${body}</tbody></table></div>`; }
+
+  function draw(){ decorate(); const rows=filterRows();
+    document.getElementById("app").innerHTML = VIEW==="card"?renderCards(rows):renderTable(rows);
+    document.getElementById("count").textContent=`${rows.length}名`; }
+  function setView(v){ VIEW=v; document.getElementById("btnCard").classList.toggle("active",v==="card"); document.getElementById("btnTable").classList.toggle("active",v==="table"); draw(); }
+  function setSort(k){ SORT=k; document.getElementById("sortSel").value=k; draw(); }
+  document.getElementById("q").addEventListener("input",draw);
+  document.getElementById("sortSel").addEventListener("change",e=>{SORT=e.target.value;draw();});
+  document.getElementById("teamSel").addEventListener("change",draw);
+
+  function parseCSV(text){
+    const rows=[]; let row=[], cell="", q=false;
+    for(let i=0;i<text.length;i++){
+      const c=text[i];
+      if(q){
+        if(c==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; }
+        else cell+=c;
+      } else if(c==='"') q=true;
+      else if(c===","){ row.push(cell); cell=""; }
+      else if(c==="\n"){ row.push(cell); rows.push(row); row=[]; cell=""; }
+      else if(c!=="\r") cell+=c;
+    }
+    if(cell!==""||row.length){ row.push(cell); rows.push(row); }
+    return rows.filter(r=>r.some(v=>(v||"").trim()));
+  }
+  function rowsToObjects(rows){
+    if(!rows.length) return [];
+    const keys=rows[0];
+    return rows.slice(1).map(r=>{
+      const o={}; keys.forEach((k,i)=>o[k]=r[i]||""); return o;
+    });
+  }
+  async function fetchText(url, ms=25000){
+    if(!url) return null;
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>ctrl.abort(), ms);
+    try{
+      const res=await fetch(url, {cache:"no-store", signal:ctrl.signal});
+      if(!res.ok) return null;
+      const text=await res.text();
+      if(!text || text.trim().startsWith("<")) return null;
+      return text;
+    }catch(e){ return null; }
+    finally{ clearTimeout(t); }
+  }
+  async function loadCsv(url, header){
+    const text=await fetchText(url);
+    if(!text) return null;
+    const rows=parseCSV(text);
+    return header ? rowsToObjects(rows) : rows;
+  }
+
+  function readLocal(){
+    try{
+      const d=JSON.parse(localStorage.getItem(STORE_KEY)||"null");
+      if(d && d.koukai && d.koukai.length) return d;
+    }catch(e){}
+    return null;
+  }
+  function saveHeld(pack){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(pack)); }catch(e){}
+  }
+  function newerPack(a,b){
+    if(!a) return b;
+    if(!b) return a;
+    const ta=Date.parse(a.fetchedAt||"")||0;
+    const tb=Date.parse(b.fetchedAt||"")||0;
+    return tb>ta ? b : a;
+  }
+  function fmtFetched(iso){
+    if(!iso) return "取得日 不明";
+    const d=new Date(iso);
+    if(isNaN(d)) return "取得日 "+String(iso).slice(0,10);
+    return `取得日 ${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
+  }
+  function daysSince(iso){
+    const t=Date.parse(iso||"");
+    if(!t) return 999;
+    return Math.floor((Date.now()-t)/86400000);
+  }
+  function renderFetchMeta(){
+    const age=daysSince(HELD_AT);
+    const stale=age>=7;
+    document.getElementById("fetchedAt").textContent=fmtFetched(HELD_AT);
+    document.getElementById("staleNote").textContent=stale?"1週間以上前です。変わっていれば「更新」を押してください。":"";
+    document.getElementById("btnRefresh").classList.toggle("stale", stale);
+  }
+  function applyPack(pack){
+    const p=pack||{};
+    MEMBERS=(p.koukai&&p.koukai.length)?p.koukai:SAMPLE_KOUKAI;
+    KEY=resolveKeys(MEMBERS[0]||{});
+    MEMBERS=MEMBERS.filter(m=>get(m,"name") && !HIDDEN_STATUS.test((get(m,"status")||"").trim()));
+    TEAMS=[...new Set(MEMBERS.map(m=>(get(m,"team")||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
+    fillTeamSelect();
+    parseSettei((p.settei&&p.settei.length)?p.settei:SAMPLE_SETTEI);
+    HELD_AT=p.fetchedAt||null;
+    document.getElementById("sortSel").value=SORT;
+    draw();
+    renderFetchMeta();
+  }
+  async function refreshFromSheet(){
+    const btn=document.getElementById("btnRefresh");
+    const msg=document.getElementById("refreshMsg");
+    btn.disabled=true; btn.textContent="取得中…"; msg.textContent="";
+    const [koukai, settei]=await Promise.all([
+      loadCsv(CONFIG.KOUKAI_CSV_URL, true),
+      loadCsv(CONFIG.SETTEI_CSV_URL, false)
+    ]);
+    if(!koukai || !koukai.length){
+      msg.textContent="シートに届きませんでした。今の名簿のままです。";
+      msg.style.color="#a33";
+      btn.disabled=false; btn.textContent="更新";
+      return;
+    }
+    const pack={ fetchedAt:new Date().toISOString(), koukai, settei:settei||[] };
+    saveHeld(pack);
+    applyPack(pack);
+    msg.style.color="#2b6a4a";
+    msg.textContent="最新のシートを取り込みました。";
+    btn.disabled=false; btn.textContent="更新";
+  }
+
+  async function loadPhotoManifest(){
+    try{
+      const r=await fetch("photos/manifest.json?_="+Date.now(), {cache:"no-store"});
+      if(!r.ok) return;
+      const j=await r.json();
+      PHOTO_IDS=new Set((j.ids||[]).map(v=>String(v)));
+    }catch(e){}
+  }
+  async function boot(){
+    await loadPhotoManifest();
+    applyPack(newerPack(window.MEIBO_SNAPSHOT||null, readLocal()));
+  }
+  document.getElementById("btnRefresh").addEventListener("click", refreshFromSheet);
+  boot();
+</script>
+</body>
+</html>

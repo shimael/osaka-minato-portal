@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>目標達成ボード | 大阪みなと倫理法人会</title>
+<style>
+  :root{ --navy:#0f2f4f; --navy-2:#14395f; --accent:#c8a24a; --gold-2:#e5c884; --bg:#f4f6f9; --card:#fff;
+    --ink:#1a2230; --sub:#7a8699; --line:#e6eaf0; --shadow:0 6px 22px rgba(20,45,80,.10);
+    --minus:#c0473b; --plus:#c8a24a; --plus-2:#ead9a6; --hot:#e0523f; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;-webkit-font-smoothing:antialiased}
+  header.top{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;padding:20px 20px 16px;position:relative;overflow:hidden}
+  header.top::after{content:"";position:absolute;right:-40px;top:-40px;width:170px;height:170px;background:radial-gradient(circle,rgba(200,162,74,.32),transparent 70%)}
+  .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .brand .org{font-size:1.02rem;font-weight:700;letter-spacing:.04em}
+  .brand .sub{font-size:1.45rem;font-weight:800;letter-spacing:.06em}
+  .accent-bar{height:3px;width:44px;background:var(--accent);border-radius:2px;display:block;margin-top:7px}
+
+  .meta-line{max-width:1040px;margin:12px auto 0;padding:0 18px;color:var(--sub);font-size:.83rem;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .fetched{font-weight:700;color:#54617a}
+  button.refresh{border:1px solid var(--navy);background:#fff;color:var(--navy);font-weight:800;font-size:.82rem;border-radius:10px;padding:6px 12px;cursor:pointer}
+  button.refresh:hover{background:var(--navy);color:#fff}
+  button.refresh:disabled{opacity:.55;cursor:wait}
+  .msg-err{color:#a33;font-weight:700}
+
+  main{max-width:1040px;margin:6px auto 60px;padding:8px 16px}
+  .section-label{display:flex;align-items:center;gap:10px;margin:26px 4px 12px;font-size:.84rem;font-weight:800;color:var(--navy);letter-spacing:.06em}
+  .section-label::after{content:"";flex:1;height:1px;background:var(--line)}
+  .card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);border:1px solid #eef1f6;padding:18px}
+
+  /* ===== 目標：あと◯名 ===== */
+  .goal{padding:22px 24px 20px}
+  .goal + .goal{margin-top:16px}
+  .goal-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .goal-head .gl{font-size:.78rem;font-weight:800;color:#8a6a20;background:rgba(200,162,74,.16);border:1px solid rgba(200,162,74,.5);border-radius:20px;padding:3px 11px}
+  .goal-head .gt{font-size:1.25rem;font-weight:800}
+  .goal-head .gd{font-size:.86rem;color:var(--sub);font-weight:700}
+  .goal-head .days{margin-left:auto;font-size:.86rem;font-weight:800;color:var(--navy);background:#eef2f8;border-radius:20px;padding:4px 12px}
+  .goal-main{display:grid;grid-template-columns:auto 1fr;gap:10px 34px;align-items:center;margin-top:8px}
+  .need{display:flex;align-items:baseline;gap:4px;line-height:.9;color:var(--hot);white-space:nowrap}
+  .need .pre{font-size:2rem;font-weight:800;color:var(--ink)}
+  .need .big{font-size:clamp(7rem,17vw,11.5rem);font-weight:900;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+  .need .unit{font-size:2.4rem;font-weight:800}
+  .goal.sub .need .big{font-size:clamp(5rem,12vw,8rem)}
+  .goal.sub .need .pre{font-size:1.5rem}
+  .goal.sub .need .unit{font-size:1.8rem}
+  .need.done{color:#2b8a57}
+  .need-cap{font-size:1.35rem;font-weight:800;line-height:1.5}
+  .need-cap b{color:var(--hot)}
+  .need-cap small{display:block;font-size:.84rem;font-weight:700;color:var(--sub);margin-top:4px;line-height:1.6}
+
+  .bar-wrap{margin-top:14px}
+  .bar{position:relative;height:22px;border-radius:12px;background:#f1f3f7;overflow:visible;border:1px solid var(--line)}
+  .bar .seg{position:absolute;top:0;bottom:0}
+  .bar .seg:first-child{border-radius:11px 0 0 11px}
+  .seg.zai{background:linear-gradient(180deg,#1c4a75,var(--navy))}
+  .seg.tet{background:var(--plus)}
+  .seg.kar{background:repeating-linear-gradient(135deg,var(--plus-2) 0 6px,#f6edd2 6px 12px)}
+  .seg.gap{border:2px dashed var(--hot);border-left:0;border-radius:0 11px 11px 0;background:rgba(224,82,63,.06)}
+  .minusbr{position:absolute;top:-9px;height:7px;border-radius:3px 3px 0 0;background:repeating-linear-gradient(135deg,rgba(192,71,59,.9) 0 4px,rgba(192,71,59,.3) 4px 8px)}
+  .bar-lbl{display:flex;justify-content:space-between;font-size:.76rem;color:var(--sub);margin-top:5px;font-weight:700}
+  .bar-lbl b{color:var(--navy);font-size:.92rem}
+
+  .slots{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .slot{width:42px;height:42px;border-radius:50%;border:2.5px dashed rgba(224,82,63,.55);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:800;color:rgba(224,82,63,.8);background:#fff}
+  .slot.final{border-style:solid;border-color:var(--hot);background:var(--hot);color:#fff}
+  .slot.more{border:0;width:auto;padding:0 6px;color:var(--sub)}
+  .slots-cap{font-size:.78rem;color:var(--sub);margin-top:8px}
+
+  .eq{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:.84rem}
+  .eq .st{background:#f2f4f8;border-radius:10px;padding:5px 10px;font-weight:700;color:#54617a}
+  .eq .st b{color:var(--navy);font-size:1.02rem;font-variant-numeric:tabular-nums}
+  .eq .st.m b{color:var(--minus)}
+  .eq .st.p b{color:#8a6a20}
+  .eq .st.r{background:#fdecea;color:#a3382b}
+  .eq .st.r b{color:var(--hot)}
+  .eq .arw{color:#b5bfcd;font-weight:800}
+
+  /* ===== 3つの数字 ===== */
+  .nums{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .num{position:relative;overflow:hidden}
+  .num .k{font-size:.78rem;font-weight:800;color:var(--sub);letter-spacing:.04em}
+  .num .v{font-size:2.4rem;font-weight:800;line-height:1.1;margin:6px 0 2px;color:var(--navy);font-variant-numeric:tabular-nums}
+  .num .v small{font-size:1rem;margin-left:3px;color:var(--sub)}
+  .num .d{font-size:.76rem;color:var(--sub);line-height:1.6}
+  .num .calc{display:inline-block;margin-top:8px;font-size:.74rem;font-weight:700;color:#54617a;background:#f2f4f8;border-radius:8px;padding:4px 9px}
+  .num::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--bar,transparent)}
+  .num.c1{--bar:var(--navy)}
+  .num.c2{--bar:var(--plus)}
+  .num.c3{--bar:var(--plus-2)}
+  .warn{margin-top:12px;background:#fff6e5;border:1px solid #f0d49a;color:#7a5410;border-radius:12px;padding:10px 14px;font-size:.82rem;line-height:1.6}
+  .warn b{color:#5c3d05}
+
+  /* ===== これからの動き ===== */
+  .tl-row{display:grid;grid-template-columns:86px 26px 1fr auto;align-items:center;gap:0 10px;min-height:52px}
+  .tl-date{text-align:right;font-weight:800;color:var(--navy);font-size:.92rem;font-variant-numeric:tabular-nums}
+  .tl-date small{display:block;font-size:.66rem;color:var(--sub);font-weight:700}
+  .tl-dot{position:relative;align-self:stretch;display:flex;align-items:center;justify-content:center}
+  .tl-dot::before{content:"";position:absolute;top:0;bottom:0;left:50%;width:2px;background:#dfe5ee;transform:translateX(-50%)}
+  .tl-row:first-child .tl-dot::before{top:50%}
+  .tl-row:last-child .tl-dot::before{bottom:50%}
+  .tl-dot i{position:relative;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--navy)}
+  .tl-row.minus .tl-dot i{border-color:var(--minus)}
+  .tl-row.last .tl-dot i{border-color:var(--minus);border-style:dashed}
+  .tl-row.g .tl-dot i{width:18px;height:18px;border-color:var(--accent);background:var(--accent)}
+  .tl-row.today .tl-dot i{background:var(--navy)}
+  .tl-row.plus .tl-dot i{border-color:var(--plus);background:var(--plus)}
+  .tl-row.pending .tl-dot i{border-color:var(--plus);border-style:dashed}
+  .tl-body{padding:8px 0;font-size:.9rem;line-height:1.5}
+  .tl-body b{font-weight:800}
+  .tl-body .note{display:block;font-size:.74rem;color:var(--sub)}
+  .tl-count{font-weight:800;font-size:1.25rem;color:var(--navy);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tl-count small{font-size:.74rem;color:var(--sub);margin-left:2px}
+  .tl-count .chg{font-size:.8rem;margin-right:6px;color:var(--minus)}
+  .tl-count .chg.up{color:#8a6a20}
+  .tl-row.g .tl-count{color:#8a6a20}
+
+  /* ===== 内訳 ===== */
+  .lists{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .list h3{margin:0 0 4px;font-size:.98rem;display:flex;align-items:center;gap:8px}
+  .list h3 .n{margin-left:auto;font-size:1.3rem;color:var(--navy);font-variant-numeric:tabular-nums}
+  .list h3 .dot{width:12px;height:12px;border-radius:4px;background:var(--c)}
+  .list .lead{margin:0 0 10px;font-size:.74rem;color:var(--sub);line-height:1.5}
+  .person{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+  .person .av{width:38px;height:38px;border-radius:50%;flex:0 0 auto;object-fit:cover;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+  .person .nm{font-weight:800;line-height:1.2}
+  .person .co{font-size:.72rem;color:var(--sub);line-height:1.3}
+  .person .tag{margin-left:auto;font-size:.72rem;font-weight:800;color:#54617a;background:#f2f4f8;border-radius:8px;padding:3px 8px;white-space:nowrap;text-align:right}
+  .person .tag.red{background:#fbecea;color:#8a2f26}
+  .none{font-size:.82rem;color:var(--sub);padding:10px 0;border-top:1px solid var(--line)}
+
+  .rules{font-size:.86rem;line-height:1.8;color:#3a4556}
+  .rules dt{font-weight:800;color:var(--navy);margin-top:8px}
+  .rules dd{margin:0 0 0 1em}
+  .rules .ex{display:block;background:#f6f8fb;border-left:3px solid var(--accent);padding:6px 10px;margin:6px 0;border-radius:0 8px 8px 0;font-size:.82rem}
+
+  .loading{text-align:center;color:var(--sub);padding:60px 0}
+  @media(max-width:760px){
+    .goal{padding:18px 16px}
+    .goal-main{grid-template-columns:1fr;text-align:center}
+    .need{justify-content:center}
+    .goal-head .days{margin-left:0}
+    .slots{justify-content:center}
+    .slot{width:34px;height:34px;font-size:.66rem}
+    .nums{grid-template-columns:1fr}
+    .lists{grid-template-columns:1fr}
+    .tl-row{grid-template-columns:64px 22px 1fr auto}
+  }
+</style>
+</head>
+<body>
+<script src="../portal-nav.js?v=20261018a" data-page="目標達成ボード"></script>
+<header class="top">
+  <div class="brand"><span class="org">大阪みなと倫理法人会</span><span class="sub">目標達成ボード</span></div>
+  <span class="accent-bar"></span>
+</header>
+
+<div class="meta-line">
+  <span class="fetched" id="fetchedAt">名簿を読み込み中…</span>
+  <button type="button" class="refresh" id="btnRefresh">更新</button>
+  <span id="refreshMsg"></span>
+</div>
+
+<main id="app"><div class="loading">会員名簿シートを読み込んでいます…</div></main>
+
+<script src="../meibo-data.js"></script>
+<script src="data.js?v=2"></script>
+<script>
+(function(){
+  "use strict";
+  const CFG = window.ZOUKYOU;
+  const STORE_KEY = "zoukyou-koukai-v1";
+  const DOW = "日月火水木金土";
+  let PHOTO_IDS = new Set();
+
+  /* ---------- 名簿の読み込み ---------- */
+  function parseCSV(text){
+    const rows=[]; let row=[], cell="", q=false;
+    for(let i=0;i<text.length;i++){
+      const c=text[i];
+      if(q){ if(c==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; } else cell+=c; }
+      else if(c==='"') q=true;
+      else if(c===","){ row.push(cell); cell=""; }
+      else if(c==="\n"){ row.push(cell); rows.push(row); row=[]; cell=""; }
+      else if(c!=="\r") cell+=c;
+    }
+    if(cell!==""||row.length){ row.push(cell); rows.push(row); }
+    const out=rows.filter(r=>r.some(v=>(v||"").trim()));
+    if(!out.length) return [];
+    const keys=out[0].map(k=>k.replace(/^\uFEFF/,"").trim());
+    return out.slice(1).map(r=>{ const o={}; keys.forEach((k,i)=>{ if(k) o[k]=(r[i]||"").trim(); }); return o; });
+  }
+  async function fetchKoukai(){
+    const ctrl=new AbortController(); const t=setTimeout(()=>ctrl.abort(),25000);
+    try{
+      const res=await fetch(CFG.KOUKAI_CSV_URL,{cache:"no-store",signal:ctrl.signal});
+      if(!res.ok) return null;
+      const text=await res.text();
+      if(!text || text.trim().startsWith("<")) return null;
+      const rows=parseCSV(text).filter(r=>r["氏名"]);
+      return rows.length ? rows : null;
+    }catch(e){ return null; } finally{ clearTimeout(t); }
+  }
+  function readLocal(){ try{ const d=JSON.parse(localStorage.getItem(STORE_KEY)||"null"); return d&&d.rows&&d.rows.length?d:null; }catch(e){ return null; } }
+  function saveLocal(p){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(p)); }catch(e){} }
+  async function loadPhotos(){
+    try{ const r=await fetch("../photos/manifest.json?_="+Date.now(),{cache:"no-store"}); if(r.ok){ const j=await r.json(); PHOTO_IDS=new Set((j.ids||[]).map(String)); } }catch(e){}
+  }
+
+  /* ---------- 日付 ---------- */
+  function ymd(s){ const m=String(s||"").match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/); return m?new Date(+m[1],+m[2]-1,+m[3]):null; }
+  function today(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); }
+  function firstOfNextMonth(d){ return new Date(d.getFullYear(),d.getMonth()+1,1); }
+  function md(d){ return `${d.getMonth()+1}/${d.getDate()}`; }
+  function mdw(d){ return `${md(d)}<small>（${DOW[d.getDay()]}）</small>`; }
+  function ymKey(d){ return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}`; }
+  function normYm(s){ const m=String(s||"").match(/(\d{4})\D(\d{1,2})/); return m?`${m[1]}/${m[2].padStart(2,"0")}`:""; }
+  function ymLabel(s){ const m=normYm(s).match(/(\d{4})\/(\d{2})/); return m?`${+m[2]}月入会`:"入会月未定"; }
+
+  /* ---------- 数え方 ---------- */
+  function fold(s){ return String(s||"").normalize("NFKC").replace(/[\s　]/g,"").replace("髙","高").replace("﨑","崎"); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  function compute(rows){
+    const T=today();
+    const st=r=>(r["在籍状況"]||"").trim();
+    const zaiseki=rows.filter(r=>st(r)==="在籍");
+    const tetsuzuki=rows.filter(r=>st(r)==="入会手続き中");
+    const kari=rows.filter(r=>st(r)==="仮");
+
+    const withdrawals=(CFG.WITHDRAWALS||[]).map(w=>{
+      const date=ymd(w.date);
+      const hit=rows.find(r=>(w.id&&r["会員番号"]===String(w.id)) || (w.name&&fold(r["氏名"])===fold(w.name)));
+      const stillIn=!!hit && (st(hit)==="在籍"||st(hit)==="入会手続き中");
+      return { ...w, date, eff: date?firstOfNextMonth(date):null, member:hit||null, stillIn };
+    }).filter(w=>w.date).sort((a,b)=>a.date-b.date);
+
+    /* 名簿がまだ在籍のままの退会予定だけを数える（名簿がもう退会なら二重に引かない） */
+    const live=withdrawals.filter(w=>w.stillIn);
+    const lagging=live.filter(w=>w.eff<=T);
+    const upcoming=live.filter(w=>w.eff>T);
+    const notFound=withdrawals.filter(w=>!w.member);
+
+    const now=zaiseki.length-lagging.length;
+    /* 入会手続き中は手続きが済んでいるので、確定に入れる */
+    const goals=(CFG.GOALS||[]).map(g=>{
+      const d=ymd(g.date);
+      const minus=upcoming.filter(w=>w.eff<=d).length;
+      const confirmed=now+tetsuzuki.length-minus;
+      const withK=confirmed+kari.length;
+      return { ...g, d, minus, confirmed, withK, days:Math.round((d-T)/86400000),
+        need:Math.max(0,g.count-withK), needConfirmed:Math.max(0,g.count-confirmed), done:confirmed>=g.count };
+    });
+    const termFrom=normYm(CFG.TERM_FROM);
+    const thisMonth=ymKey(T);
+    const joinedTerm=zaiseki.filter(r=>termFrom && normYm(r["入会月"])>=termFrom).sort((a,b)=>normYm(b["入会月"]).localeCompare(normYm(a["入会月"])));
+    const joinedMonth=zaiseki.filter(r=>normYm(r["入会月"])===thisMonth);
+    return { T, zaiseki, tetsuzuki, kari, withdrawals, live, lagging, upcoming, notFound, now, goals, joinedTerm, joinedMonth, termFrom };
+  }
+
+  /* ---------- 描画 ---------- */
+  function avatar(r){
+    const id=r&&r["会員番号"]; const nm=(r&&r["氏名"])||"";
+    if(id && PHOTO_IDS.has(id)) return `<img class="av" src="../photos/${esc(id)}.jpg" alt="">`;
+    return `<span class="av">${esc(Array.from(nm.trim())[0]||"？")}</span>`;
+  }
+  function person(r,tag,red){
+    return `<div class="person">${avatar(r)}<div><div class="nm">${esc((r["氏名"]||"").replace(/\s+/g," "))}</div><div class="co">${esc(r["会社名"]||"")}</div></div><span class="tag${red?" red":""}">${tag}</span></div>`;
+  }
+
+  function renderGoals(c){
+    return c.goals.map((g,gi)=>{
+      const pct=v=>Math.max(0,Math.min(100,v/g.count*100));
+      const zai=c.now-g.minus, tet=c.tetsuzuki.length, kar=c.kari.length;
+      const MAX=40, shown=Math.min(g.need,MAX);
+      const slots=[];
+      for(let i=0;i<shown;i++){ const no=g.withK+i+1; slots.push(`<div class="slot${no===g.count?" final":""}">${no===g.count?"達成":no}</div>`); }
+      if(g.need>MAX) slots.push(`<div class="slot more">… ${g.count}</div>`);
+      const head=g.done
+        ? `<div class="need done"><span class="big">達成</span></div><div class="need-cap">${g.count}名に届いています（確定 ${g.confirmed}名）</div>`
+        : g.need===0
+        ? `<div class="need done"><span class="pre">あと</span><span class="big">0</span><span class="unit">名</span></div><div class="need-cap">入会予定の ${kar}名が入れば ${g.count}名 達成<small>確定（在籍＋手続き中）からは あと ${g.needConfirmed}名</small></div>`
+        : `<div class="need"><span class="pre">あと</span><span class="big">${g.need}</span><span class="unit">名</span></div>
+           <div class="need-cap">あと <b>${g.need}名</b> 入会で<br>${g.count}名 達成！
+             <small>確定 ${g.confirmed}名${kar?` ＋ 入会予定 ${kar}名`:""} ＝ ${g.withK}名 から数えています。${kar?`<br>入会予定を入れずに数えると あと ${g.needConfirmed}名。`:""}</small></div>`;
+      return `
+      <div class="card goal${gi>0?" sub":""}">
+        <div class="goal-head">
+          <span class="gl">${esc(g.label)}</span>
+          <span class="gt">${g.count}名</span>
+          <span class="gd">${g.d.getFullYear()}年${g.d.getMonth()+1}月${g.d.getDate()}日まで</span>
+          ${g.days>=0?`<span class="days">あと ${g.days}日</span>`:""}
+        </div>
+        <div class="goal-main">${head}</div>
+        <div class="bar-wrap">
+          <div class="bar">
+            ${g.minus?`<div class="minusbr" style="left:${pct(zai+tet)}%;width:${pct(g.minus)}%"></div>`:""}
+            <div class="seg zai" style="left:0;width:${pct(zai)}%"></div>
+            ${tet?`<div class="seg tet" style="left:${pct(zai)}%;width:${pct(tet)}%"></div>`:""}
+            ${kar?`<div class="seg kar" style="left:${pct(zai+tet)}%;width:${pct(kar)}%"></div>`:""}
+            ${g.need?`<div class="seg gap" style="left:${pct(g.withK)}%;width:${pct(g.need)}%"></div>`:""}
+          </div>
+          <div class="bar-lbl"><span>0</span><span><b>${g.withK}</b> / ${g.count}名</span></div>
+        </div>
+        ${shown?`<div class="slots">${slots.join("")}</div><div class="slots-cap">点線の丸ひとつが、あとひとりの入会です。</div>`:""}
+        <div class="eq">
+          <span class="st">在籍 <b>${zai}</b></span>
+          ${g.minus?`<span class="st m">（退会予定 <b>−${g.minus}</b> を引いた数）</span>`:""}
+          <span class="arw">＋</span><span class="st p">手続き中 <b>${tet}</b></span>
+          <span class="arw">＝</span><span class="st">確定 <b>${g.confirmed}</b></span>
+          <span class="arw">＋</span><span class="st p">入会予定 <b>${kar}</b></span>
+          <span class="arw">＝</span><span class="st">${g.withK}</span>
+          <span class="arw">→</span><span class="st r">${g.count} まで あと <b>${g.need}</b></span>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderNums(c){
+    const g=c.goals[0];
+    return `
+    <div class="nums">
+      <div class="card num c1">
+        <div class="k">今日の在籍（実数）</div>
+        <div class="v">${c.now}<small>名</small></div>
+        <div class="d">名簿シートで「在籍」の人数。公式の会員数と同じ数え方です。退会届が出ていても、退会日の月末までは入っています。</div>
+      </div>
+      <div class="card num c2">
+        <div class="k">${g?`${md(g.d)} の確定見込み`:"確定見込み"}</div>
+        <div class="v">${g?g.confirmed:c.now+c.tetsuzuki.length}<small>名</small></div>
+        <div class="d">在籍に、入会手続き中（手続き済み・実質入会）の人を足し、${g?"目標日までに":""}退会が決まっている人を引いた数。</div>
+        <span class="calc">${c.now} ＋ 手続き中 ${c.tetsuzuki.length}${g&&g.minus?` − 退会予定 ${g.minus}`:""}</span>
+      </div>
+      <div class="card num c3">
+        <div class="k">入会予定も入ったら</div>
+        <div class="v">${g?g.withK:c.now+c.tetsuzuki.length+c.kari.length}<small>名</small></div>
+        <div class="d">確定見込みに、入会予定（名簿シートで「仮」）の人を足した数。</div>
+        <span class="calc">${g?g.confirmed:c.now+c.tetsuzuki.length} ＋ 入会予定 ${c.kari.length}</span>
+      </div>
+    </div>
+    ${renderWarn(c)}`;
+  }
+  function renderWarn(c){
+    const msgs=[];
+    if(c.lagging.length) msgs.push(`<b>名簿の更新待ち：</b>${c.lagging.map(w=>`${esc(w.member["氏名"])}さん（${md(w.date)} 退会）`).join("、")} は退会を反映する日を過ぎていますが、名簿シートがまだ「在籍」です。このボードでは引いて数えています。`);
+    if(c.notFound.length) msgs.push(`<b>名簿で見つからない退会予定：</b>${c.notFound.map(w=>esc(w.name||w.id)).join("、")}。名簿がもう「退会」になっている場合は、data.js から消してください（数には入れていません）。`);
+    return msgs.length?`<div class="warn">${msgs.join("<br>")}</div>`:"";
+  }
+
+  function renderTimeline(c){
+    const ev=[];
+    let running=c.now;
+    ev.push({ d:c.T, cls:"today", body:`<b>今日の在籍</b><span class="note">名簿シートで「在籍」の人数</span>`, count:`${c.now}<small>名</small>`, order:0 });
+    if(c.tetsuzuki.length){
+      running+=c.tetsuzuki.length;
+      ev.push({ d:c.T, cls:"plus", body:`<b>入会手続き中 ${c.tetsuzuki.length}名</b><span class="note">手続きは済んでいるので、確定に入れています</span>`, count:`<span class="chg up">＋${c.tetsuzuki.length}</span>${running}<small>名</small>`, order:1 });
+    }
+    if(c.kari.length) ev.push({ d:c.T, cls:"pending", dateTxt:`時期は<small>名簿しだい</small>`, body:`<b>入会予定 ${c.kari.length}名</b><span class="note">名簿シートで「仮」の人。入れば ＋${c.kari.length}（下の数にはまだ入れていません）</span>`, count:"", order:2 });
+    const byEff=new Map();
+    c.upcoming.forEach(w=>{
+      ev.push({ d:w.date, cls:"last", body:`<b>${esc(w.member["氏名"])}さん</b> の最終在籍月<span class="note">${md(w.date)} 付で退会。${w.date.getMonth()+1}月末までは在籍に入っています${w.memo?"・"+esc(w.memo):""}</span>`, count:"", order:3 });
+      const k=+w.eff; byEff.set(k,(byEff.get(k)||0)+1);
+    });
+    [...byEff.entries()].forEach(([k,n])=>ev.push({ d:new Date(k), cls:"minus", minus:n, body:`<b>退会 ${n}名 を反映</b><span class="note">この日から在籍の数が減ります</span>`, order:4 }));
+    c.goals.forEach(g=>ev.push({ d:g.d, cls:"g", goal:g, order:5,
+      body:`<b>${esc(g.label)} ${g.count}名</b><span class="note">${g.done?"確定で達成":`入会予定も入れて あと ${g.need}名`}</span>` }));
+    ev.sort((a,b)=>a.d-b.d || a.order-b.order);
+    const rows=ev.map(e=>{
+      let cnt=e.count||"";
+      if(e.cls==="minus"){ running-=e.minus; cnt=`<span class="chg">−${e.minus}</span>${running}<small>名</small>`; }
+      else if(e.cls==="g") cnt=`${running}<small>/ ${e.goal.count}</small>`;
+      return `<div class="tl-row ${e.cls}"><div class="tl-date">${e.dateTxt||mdw(e.d)}</div><div class="tl-dot"><i></i></div><div class="tl-body">${e.body}</div><div class="tl-count">${cnt}</div></div>`;
+    });
+    const noW=!c.upcoming.length?`<p style="margin:12px 0 0;font-size:.78rem;color:var(--sub)">いま登録されている退会予定はありません。退会届が出たら、会長・事務局から知らせてください（このボードに反映します）。</p>`:"";
+    return `<div class="card"><div class="tl">${rows.join("")}</div>${noW}</div>`;
+  }
+
+  function renderLists(c){
+    const T=c.T;
+    const wl=c.withdrawals.length?c.withdrawals.map(w=>{
+      const r=w.member||{ "氏名":w.name||w.id, "会社名":"" };
+      const passed=w.eff<=T;
+      const tag=!w.member?"名簿になし":!w.stillIn?"名簿に反映済み":passed?`${md(w.eff)} 反映・名簿の更新待ち`:`${md(w.date)} 退会 → ${md(w.eff)} に −1`;
+      return person(r,tag,true);
+    }).join(""):`<div class="none">ありません</div>`;
+    const tl=c.tetsuzuki.length?c.tetsuzuki.map(r=>person(r,ymLabel(r["入会月"]))).join(""):`<div class="none">ありません</div>`;
+    const kl=c.kari.length?c.kari.map(r=>person(r,ymLabel(r["入会月"]))).join(""):`<div class="none">ありません</div>`;
+    const jl=c.joinedTerm.length?c.joinedTerm.map(r=>person(r,ymLabel(r["入会月"]))).join(""):`<div class="none">まだいません</div>`;
+    const termM=(c.termFrom.match(/\/(\d{2})/)||[])[1];
+    return `
+    <div class="lists">
+      <div class="card list" style="--c:var(--plus)"><h3><span class="dot"></span>入会手続き中（確定に入れています）<span class="n">${c.tetsuzuki.length}</span></h3><p class="lead">名簿シートの在籍状況が「入会手続き中」の人。手続きは済んでいます。</p>${tl}</div>
+      <div class="card list" style="--c:var(--plus-2)"><h3><span class="dot"></span>入会予定（仮）<span class="n">${c.kari.length}</span></h3><p class="lead">名簿シートの在籍状況が「仮」の人。</p>${kl}</div>
+      <div class="card list" style="--c:var(--minus)"><h3><span class="dot"></span>退会予定<span class="n">${c.live.filter(w=>w.eff>T).length}</span></h3><p class="lead">退会届が出ている人。退会日の翌月1日に在籍から減ります。</p>${wl}</div>
+      <div class="card list" style="--c:var(--navy)"><h3><span class="dot"></span>今期の入会（${termM?+termM+"月から":""}）<span class="n">${c.joinedTerm.length}</span></h3><p class="lead">入会月が ${esc(c.termFrom)} 以降で、いま在籍している人。今月の入会は ${c.joinedMonth.length}名。</p>${jl}</div>
+    </div>`;
+  }
+
+  function renderRules(){
+    return `
+    <div class="card rules"><dl>
+      <dt>あと◯名</dt>
+      <dd>目標から「確定見込み＋入会予定」を引いた数です。あと何人に入会してもらえば目標に届くかを表します。</dd>
+      <dt>今日の在籍（実数）</dt>
+      <dd>名簿シートの在籍状況が「在籍」の人数です。退会届が出ていても、退会日の月末までは在籍に数えます。</dd>
+      <dt>確定見込み</dt>
+      <dd>在籍に「入会手続き中」の人を足し、目標日までに退会が反映される人を引いた数です。入会手続き中の人は手続きが済んでいるので、入会したものとして数えます。
+        <span class="ex">例）10月12日に「10月30日付で退会」の届が出た場合：10月中は在籍のまま（今日の在籍は減らない）。11月1日から在籍が1人減る。11/30 の確定見込みは、今日の時点で1人減らしておく。</span></dd>
+      <dt>入会予定</dt>
+      <dd>名簿シートで「仮」の人です。名簿で「入会手続き中」か「在籍」に変わると、確定見込みに移ります。</dd>
+      <dt>数字の出どころ</dt>
+      <dd>在籍・入会手続き中・仮は、開くたびに会員名簿シートから読みます。退会予定だけは名簿シートに欄がないので、事務局から聞いた内容をこのボードに登録しています。</dd>
+    </dl></div>`;
+  }
+
+  function render(c){
+    document.getElementById("app").innerHTML = `
+      ${renderGoals(c)}
+      <div class="section-label">いまの人数</div>
+      ${renderNums(c)}
+      <div class="section-label">これからの動き</div>
+      ${renderTimeline(c)}
+      <div class="section-label">内訳</div>
+      ${renderLists(c)}
+      <div class="section-label">数え方</div>
+      ${renderRules()}`;
+  }
+
+  function fmtAt(iso){ const d=new Date(iso); return isNaN(d)?"":`名簿 ${d.getMonth()+1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")} 時点`; }
+
+  async function load(){
+    const btn=document.getElementById("btnRefresh"), msg=document.getElementById("refreshMsg");
+    btn.disabled=true; btn.textContent="取得中…"; msg.textContent=""; msg.className="";
+    const rows=await fetchKoukai();
+    let pack;
+    if(rows){ pack={ at:new Date().toISOString(), rows }; saveLocal(pack); }
+    else{
+      pack=readLocal();
+      msg.className="msg-err";
+      if(pack) msg.textContent="名簿シートに届きませんでした。前回読み込んだ名簿で表示しています。";
+      else{
+        const snap=window.MEIBO_SNAPSHOT;
+        pack={ at:snap&&snap.fetchedAt, rows:(snap&&snap.koukai)||[] };
+        msg.textContent="名簿シートに届きませんでした。保存している名簿（在籍のみ・手続き中と仮は入っていません）で表示しています。";
+      }
+    }
+    document.getElementById("fetchedAt").textContent=fmtAt(pack.at);
+    render(compute(pack.rows));
+    btn.disabled=false; btn.textContent="更新";
+  }
+
+  document.getElementById("btnRefresh").addEventListener("click",load);
+  loadPhotos().then(()=>{
+    const held=readLocal();
+    if(held){ document.getElementById("fetchedAt").textContent=fmtAt(held.at); render(compute(held.rows)); }
+    load();
+  });
+})();
+</script>
+</body>
+</html>

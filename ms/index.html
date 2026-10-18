@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>準備カレンダー | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20260917j">
+</head>
+<body data-page="calendar">
+<header class="topbar">
+  <h1>準備カレンダー</h1>
+  <p class="sub">準備の進め方はこれから相談しながら作ります。いまは試作です。人の名前は「R9 会員スピーチ」の担当表が正です。</p>
+  <div class="meta">
+    <span class="who">表示中：<strong id="who-name"></strong>
+      <button type="button" id="btn-logout">切り替え</button>
+    </span>
+    <span id="ms-save-flag" hidden>保存しています…</span>
+  </div>
+</header>
+<script src="../portal-nav.js?v=20261018a" data-section="ms" data-tab="prep"></script>
+
+<div class="wrap">
+  <div id="store-mode" class="banner" hidden></div>
+
+  <div class="card howto">
+    <strong>準備の仕様はこれから詰めます。</strong>
+    講話者・会員スピーチの名前は
+    <a href="https://docs.google.com/spreadsheets/d/1DWyJy9Hst3ohPIme66oFf37dMbp7VwKiGyBb8JyC8Iw/edit?gid=1644925538#gid=1644925538" target="_blank" rel="noopener">R9 講話&会員スピーチ</a>
+    が正です。シートを直して再読み込みすると反映されます。火曜の日付（「設定」）から、その回の画面は開けます。
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <div class="toolbar">
+    <div class="seg" id="view-seg">
+      <button type="button" class="on" data-view="cal">カレンダー</button>
+      <button type="button" data-view="todo">期限順</button>
+    </div>
+    <label>担当
+      <select id="filter-assignee">
+        <option value="">全員</option>
+      </select>
+    </label>
+    <label>状態
+      <select id="filter-tone">
+        <option value="">すべて</option>
+        <option value="today">今日期限</option>
+        <option value="overdue">期限超過</option>
+        <option value="open">未完了</option>
+      </select>
+    </label>
+    <button class="btn" type="button" id="btn-today">今日へ</button>
+  </div>
+
+  <div id="view-cal"><div class="card empty">読み込んでいます…</div></div>
+  <div id="view-todo" hidden></div>
+</div>
+
+<div id="pop"></div>
+
+<div class="overlay" id="auth-overlay" hidden>
+  <form class="auth-card" id="auth-form">
+    <h2>役職者だけが使います</h2>
+    <p>合言葉と、記録に残すお名前を入れてください。出席人数や反省メモは、合言葉がないと開けません。</p>
+    <div class="field">
+      <span class="lbl">お名前</span>
+      <input id="auth-name" autocomplete="name" required>
+    </div>
+    <div class="field" id="auth-key-row">
+      <span class="lbl">合言葉</span>
+      <input id="auth-key" type="password" autocomplete="current-password">
+    </div>
+    <p class="err" id="auth-error"></p>
+    <button class="btn primary" type="submit">入る</button>
+  </form>
+</div>
+
+<footer>大阪みなと倫理法人会　役職者ポータル<br>このページのURLは役職者以外に共有しないでください。</footer>
+
+<script src="../meibo-data.js"></script>
+<script src="history-data.js?v=20260917j"></script>
+<script src="config.js?v=20260917j"></script>
+<script src="app.js?v=20260917j"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  let view = "cal";
+  let filterAssignee = "";
+  let filterTone = "";
+
+  function matchFilter(task) {
+    if (filterAssignee && task.assignee !== filterAssignee) return false;
+    const tone = MS.taskTone(task);
+    if (filterTone === "open") return tone !== "done";
+    if (filterTone === "today") return tone !== "done" && task.dueDate === MS.todayYmd();
+    if (filterTone === "overdue") return tone === "overdue";
+    return true;
+  }
+
+  function isAlertTask(t) {
+    if (!t || t.status === "完了" || t.status === "不要") return false;
+    if (t.templateKey === "format_decide") return false;
+    if (MS.isDecidePart(t)) return false;
+    if (t.date && t.date < MS.todayYmd()) return false;
+    return true;
+  }
+
+  function matchBundle(b) {
+    if (!b) return false;
+    if (filterAssignee) {
+      const names = [b.contact && b.contact.assignee, b.ask && b.ask.assignee].filter(Boolean);
+      if (names.length ? names.indexOf(filterAssignee) < 0 : true) return false;
+    }
+    const tone = MS.decideTone(b);
+    if (filterTone === "open") return tone !== "done";
+    if (filterTone === "today") return tone !== "done" && b.dueDate === MS.todayYmd();
+    if (filterTone === "overdue") return tone === "overdue";
+    return true;
+  }
+
+  function bundleTags(b, compact) {
+    const fake = b.contact || b.ask || {
+      date: b.slot.date, slotId: b.slot.id, templateKey: "contact", lane: MS.laneOfKind(b.slot.kind)
+    };
+    return MS.taskTagsHtml(fake, compact);
+  }
+
+  function dueOverLabel(due) {
+    const today = MS.todayYmd();
+    const n = Math.round((parseYmdLocal(today) - parseYmdLocal(due)) / 86400000);
+    return MS.jaDate(due, false).replace(/^\d+年/, "") + "（" + n + "日超過）";
+  }
+
+  function decideItemHtml(b, dueLabel) {
+    const tone = MS.decideTone(b);
+    return `<div class="todo decide-item ${tone}">
+      <div class="due">${dueLabel}</div>
+      <div>
+        ${bundleTags(b)}
+        <div class="prep-title">${MS.escapeHtml(b.title)}</div>
+        ${MS.decideChecksHtml(b.slot)}
+        <div class="meta"><a href="detail.html?date=${b.slot.date}">この回を開く</a></div>
+      </div>
+    </div>`;
+  }
+
+  function taskItemHtml(t, dueLabel) {
+    const tone = MS.taskTone(t);
+    return `<div class="todo ${tone}">
+      <div class="due">${dueLabel}</div>
+      <div>
+        ${MS.taskTagsHtml(t)}
+        <div class="title">${MS.escapeHtml(MS.taskAction(t))}</div>
+        <div class="meta">${t.assignee ? "担当 " + MS.escapeHtml(t.assignee) : "担当未定"}
+          ／ <a href="detail.html?date=${t.date}">この回を開く</a></div>
+      </div>
+      <button class="btn" type="button" data-task="${MS.escapeHtml(t.id)}">更新</button>
+    </div>`;
+  }
+
+  function renderSummary() {
+    const today = MS.todayYmd();
+    const open = MS.openTasks().filter(isAlertTask).filter(matchFilter);
+    const bundles = MS.openDecideBundles().filter(matchBundle);
+    const mix = (duePred, labelFn) => {
+      const items = [];
+      bundles.filter(b => duePred(b.dueDate)).forEach(b => items.push({
+        due: b.dueDate, date: b.slot.date, html: decideItemHtml(b, labelFn(b.dueDate))
+      }));
+      open.filter(t => duePred(t.dueDate)).forEach(t => items.push({
+        due: t.dueDate, date: t.date, html: taskItemHtml(t, labelFn(t.dueDate))
+      }));
+      items.sort((a, b) => MS.cmpDate(a.due || "9999", b.due || "9999") || MS.cmpDate(a.date, b.date));
+      return items.map(x => x.html).join("");
+    };
+    const block = (title, cls, inner, empty) => `
+      <div class="card ${cls}">
+        <h2>${title}</h2>
+        ${inner ? `<div class="todo-list">${inner}</div>` : `<div class="empty">${empty}</div>`}
+      </div>`;
+    $("summary").innerHTML =
+      block("今日期限", "todaydue", mix(d => d === today, () => "今日"), "今日が期限の未完了はありません。") +
+      block("期限超過", "overdue", mix(d => d && d < today, dueOverLabel), "期限を過ぎた未完了はありません。");
+  }
+
+  function parseYmdLocal(s) {
+    const p = String(s || "").split("-").map(Number);
+    return new Date(p[0], (p[1] || 1) - 1, p[2] || 1).getTime();
+  }
+
+  function fillAssigneeFilter() {
+    const sel = $("filter-assignee");
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">全員</option>' +
+      MS.assignees().map(n => `<option value="${MS.escapeHtml(n)}">${MS.escapeHtml(n)}</option>`).join("");
+    sel.value = cur;
+  }
+
+  function chipHtml(task) {
+    const tone = MS.taskTone(task);
+    return `<button type="button" class="chip ${tone}" data-task="${MS.escapeHtml(task.id)}">
+      ${MS.taskTagsHtml(task, true)}
+      ${MS.escapeHtml(MS.taskAction(task))}
+    </button>`;
+  }
+
+  function renderCal() {
+    const months = MS.monthSpan(MS_CONFIG.months || 3);
+    const today = MS.todayYmd();
+    const map = MS.annualByDate();
+    const lanes = MS.cfg().lanes;
+    let html = `<div class="cal-wrap"><table class="cal"><thead><tr>
+      <th>日</th><th>曜</th><th>年間予定</th>${lanes.map(l => `<th>${MS.escapeHtml(l.name)}</th>`).join("")}
+    </tr></thead><tbody>`;
+
+    months.forEach(({ y, m }) => {
+      html += `<tr class="month-row"><td colspan="${2 + lanes.length + 1}">${y}年${m}月</td></tr>`;
+      const last = MS.daysInMonth(y, m);
+      for (let d = 1; d <= last; d++) {
+        const date = MS.ymd(y, m, d);
+        const dow = MS.weekday(date);
+        const hol = MS.HOLIDAYS[date];
+        const kind = MS.msKindOn(date);
+        const sess = MS.sessionOf(date);
+        const cls = [
+          dow === 0 ? "sun" : dow === 6 ? "sat" : "",
+          kind === "held" ? "ms" : "",
+          kind === "recess" ? "recess" : "",
+          date === today ? "today" : "",
+          date < today ? "past" : ""
+        ].filter(Boolean).join(" ");
+        const dateCell = kind
+          ? `<a class="date-link ms-open" href="detail.html?date=${date}">${d}<span class="open-hint">設定</span></a>`
+          : `<span class="date-link">${d}</span>`;
+        const wcell = MS.WDAYS[dow] + (hol ? `<span class="hol">${hol}</span>` : "")
+          + (kind === "recess" ? `<span class="recess-tag">休会</span>` : "");
+
+        const tasks = MS.state.tasks.filter(t => t.dueDate === date && t.date >= today).filter(matchFilter);
+        const slots = kind ? MS.slotsOf(date) : [];
+        const laneCells = lanes.map(lane => {
+          const bits = [];
+          slots.filter(s => MS.laneOfKind(s.kind) === lane.id).forEach(s => {
+            const label = (s.speakerName || "未定") + (s.title ? "「" + s.title + "」" : "");
+            const b = MS.decideBundle(s);
+            const tone = MS.decideTone(b);
+            bits.push(`<div class="chip slot-block ${tone}">
+              <a class="chip slot" href="detail.html?date=${date}">${MS.escapeHtml(s.kind)} ${MS.escapeHtml(label)}</a>
+              <div class="prep-title">${MS.escapeHtml(MS.decideTitle(s.kind))}</div>
+              ${MS.decideChecksHtml(s)}
+            </div>`);
+          });
+          if (kind === "held" && lane.id === "other" && sess && (!sess.format || sess.format === "unset")) {
+            bits.push(`<a class="chip slot unset" href="detail.html?date=${date}">構成を決める</a>`);
+          }
+          tasks.filter(t => t.lane === lane.id && t.templateKey !== "format_decide" && !MS.isDecidePart(t)).forEach(t => bits.push(chipHtml(t)));
+          return `<td class="lane">${bits.join("") || ""}</td>`;
+        }).join("");
+
+        const ann = (map[date] || []).filter(ev => !MS.isMsEvent(ev)).map(ev => {
+          const cat = MS.catById(ev.catId);
+          return `<div class="ann-item"><span class="dot" style="background:${cat.color}"></span><span>${MS.escapeHtml(ev.title)}</span></div>`;
+        }).join("");
+
+        html += `<tr class="${cls}">
+          <td class="dcol">${dateCell}</td>
+          <td class="wcol">${wcell}</td>
+          <td class="ann">${ann}</td>
+          ${laneCells}
+        </tr>`;
+      }
+    });
+    html += "</tbody></table></div>";
+    $("view-cal").innerHTML = html;
+  }
+
+  function renderTodo() {
+    const items = [];
+    MS.openDecideBundles().filter(matchBundle).forEach(b => {
+      items.push({
+        due: b.dueDate || "9999",
+        date: b.slot.date,
+        html: decideItemHtml(b, b.dueDate ? MS.jaDate(b.dueDate, false).replace(/^\d+年/, "") : "期限なし")
+      });
+    });
+    MS.state.tasks
+      .filter(t => t.status !== "完了" && t.status !== "不要")
+      .filter(t => !t.date || t.date >= MS.todayYmd())
+      .filter(t => !MS.isDecidePart(t))
+      .filter(matchFilter)
+      .forEach(t => {
+        items.push({
+          due: t.dueDate || "9999",
+          date: t.date,
+          html: taskItemHtml(t, t.dueDate ? MS.jaDate(t.dueDate, false).replace(/^\d+年/, "") : "期限なし")
+        });
+      });
+    items.sort((a, b) => MS.cmpDate(a.due, b.due) || MS.cmpDate(a.date, b.date));
+    if (!items.length) {
+      $("view-todo").innerHTML = '<div class="card empty">表示する未完了タスクはありません。</div>';
+      return;
+    }
+    $("view-todo").innerHTML = `<div class="todo-list">${items.map(x => x.html).join("")}</div>`;
+  }
+
+  function render() {
+    renderSummary();
+    fillAssigneeFilter();
+    if (view === "cal") renderCal();
+    else renderTodo();
+  }
+
+  function closePop() { $("pop").classList.remove("show"); }
+
+  function openTask(id, ev) {
+    const task = MS.taskById(id);
+    if (!task) return;
+    const pop = $("pop");
+    const names = MS.assignees();
+    pop.innerHTML = `
+      ${MS.taskTagsHtml(task)}
+      <h3>${MS.escapeHtml(MS.taskAction(task))}</h3>
+      <div class="muted">期限 ${task.dueDate ? MS.jaDate(task.dueDate, true) : "なし"}
+        ／ <a href="detail.html?date=${task.date}">この回を開く</a></div>
+      <div class="field" style="margin-top:8px">
+        <span class="lbl">状態</span>
+        <select id="pop-status">
+          ${["未着手","進行中","完了","不要"].map(s => `<option ${s===task.status?"selected":""}>${s}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field">
+        <span class="lbl">担当</span>
+        <input id="pop-assignee" list="pop-assignees" value="${MS.escapeHtml(task.assignee || "")}">
+        <datalist id="pop-assignees">${names.map(n => `<option value="${MS.escapeHtml(n)}">`).join("")}</datalist>
+      </div>
+      <div class="field">
+        <span class="lbl">メモ</span>
+        <textarea id="pop-note">${MS.escapeHtml(task.note || "")}</textarea>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="button" id="pop-save">保存</button>
+        <a class="btn" href="detail.html?date=${task.date}">詳細へ</a>
+        <button class="btn ghost" type="button" id="pop-close">閉じる</button>
+      </div>`;
+    const x = Math.min(window.innerWidth - 360, Math.max(12, (ev && ev.clientX) || 40));
+    const y = Math.min(window.innerHeight - 80, Math.max(12, (ev && ev.clientY) || 40));
+    pop.style.left = x + "px";
+    pop.style.top = Math.min(y + 8, window.innerHeight - 360) + "px";
+    pop.classList.add("show");
+    $("pop-close").onclick = closePop;
+    $("pop-save").onclick = async () => {
+      const next = Object.assign({}, task, {
+        status: $("pop-status").value,
+        assignee: $("pop-assignee").value.trim(),
+        note: $("pop-note").value
+      });
+      if (next.status === "完了" && task.status !== "完了") {
+        next.doneAt = MS.todayYmd();
+        next.doneBy = MS.who.name;
+      }
+      if (next.status !== "完了") { next.doneAt = ""; next.doneBy = ""; }
+      try {
+        await MS.saveOps([{ op: "upsert", sheet: "tasks", rows: [next] }]);
+        MS.toast("保存しました");
+        closePop();
+        render();
+      } catch (e) { MS.toast(e.message || "保存できませんでした"); }
+    };
+  }
+
+  $("view-seg").onclick = e => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    view = btn.dataset.view;
+    $("view-seg").querySelectorAll("button").forEach(b => b.classList.toggle("on", b === btn));
+    $("view-cal").hidden = view !== "cal";
+    $("view-todo").hidden = view !== "todo";
+    render();
+  };
+  $("filter-assignee").onchange = e => { filterAssignee = e.target.value; render(); };
+  $("filter-tone").onchange = e => { filterTone = e.target.value; render(); };
+  $("btn-today").onclick = () => {
+    const row = document.querySelector("tr.today");
+    if (row) row.scrollIntoView({ block: "center" });
+  };
+  $("btn-logout").onclick = () => MS.logout();
+  async function onToggleContact(box) {
+    if (!box || box.dataset.busy === "1") return;
+    box.dataset.busy = "1";
+    const slotId = box.getAttribute("data-toggle-contact");
+    const done = box.checked;
+    MS.paintContactPending(slotId, done);
+    try {
+      await MS.setContactDone(slotId, done);
+      MS.paintContactSettled(slotId, done, true);
+      if (done) await new Promise(r => setTimeout(r, 380));
+      renderSummary();
+      if (view === "todo") renderTodo();
+    } catch (err) {
+      MS.paintContactSettled(slotId, done, false);
+      MS.toast(err.message || "保存できませんでした");
+    }
+  }
+  document.addEventListener("change", e => {
+    const box = e.target.closest("[data-toggle-contact]");
+    if (box) onToggleContact(box);
+  });
+  document.addEventListener("click", e => {
+    if (e.target.closest("[data-toggle-contact]")) return;
+    const btn = e.target.closest("[data-task]");
+    if (btn) { openTask(btn.getAttribute("data-task"), e); return; }
+    if (!$("pop").contains(e.target)) closePop();
+  });
+
+  MS.boot().then(() => {
+    render();
+    return MS.persistGenerated();
+  }).then(() => {
+    if (MS.hasPendingContact && MS.hasPendingContact()) renderSummary();
+    else render();
+  }).catch(err => {
+    $("view-cal").innerHTML = `<div class="card">${MS.escapeHtml(err.message || String(err))}</div>`;
+  });
+})();
+</script>
+</body>
+</html>

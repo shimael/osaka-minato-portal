@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>出席簿 | 大阪みなと倫理法人会</title>
+<style>
+  :root{
+    --navy:#0f2f4f; --navy-2:#16436c; --gold:#c8a24a;
+    --bg:#eef1f6; --card:#fff; --ink:#16202e; --sub:#6b7686; --line:#e5e9f0; --muted:#b4bcc8;
+    --ok:#0b6b3a; --ng:#b23a3a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  header{background:linear-gradient(150deg,#0a2036,var(--navy) 55%,var(--navy-2));color:#fff;padding:18px 0 16px}
+  .head-inner{max-width:1200px;margin:0 auto;padding:0 14px}
+  header a{color:rgba(255,255,255,.75);text-decoration:none;font-size:.8rem}
+  header h1{margin:6px 0 0;font-size:1.3rem;letter-spacing:.06em}
+  .wrap{max-width:1200px;margin:0 auto;padding:16px 14px 60px}
+
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
+  select,button,input{font:inherit;font-size:.9rem}
+  select,input{padding:7px 10px;border:1px solid #cfd6e0;border-radius:8px;background:#fff}
+  input[type=search]{min-width:160px}
+  button{padding:7px 14px;border:0;border-radius:8px;background:var(--navy);color:#fff;cursor:pointer}
+  button.light{background:#fff;color:var(--navy);border:1px solid #cfd6e0}
+  .asof{margin-left:auto;font-size:.8rem;color:var(--sub)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .chip{padding:6px 12px;border-radius:20px;background:#fff;border:1px solid #dbe1ea;font-size:.82rem;cursor:pointer}
+  .chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .chip[disabled]{opacity:.4;cursor:default}
+
+  .card{background:var(--card);border:1px solid #e3e8ef;border-radius:14px;padding:14px;box-shadow:0 4px 14px rgba(20,45,80,.05)}
+  .count{font-size:.82rem;color:var(--sub);margin-bottom:6px}
+  .msg{padding:22px 4px;color:var(--sub);text-align:center}
+  .warn{margin-top:10px;font-size:.78rem;color:#9a5b00;background:#fff6e6;border-radius:8px;padding:8px 10px}
+  .legend{font-size:.75rem;color:var(--sub);margin-top:8px}
+
+  .scroll{overflow:auto;max-height:72vh;-webkit-overflow-scrolling:touch}
+  table{border-collapse:separate;border-spacing:0;font-size:.84rem;white-space:nowrap}
+  th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:center;background:#fff}
+  thead th{background:#f5f7fa;font-weight:700;color:#3a4657;position:sticky;top:0;z-index:2}
+  thead th small{display:block;font-weight:500;color:var(--sub);font-size:.68rem}
+  th.name,td.name{position:sticky;left:0;z-index:1;text-align:left;border-right:1px solid var(--line)}
+  thead th.name{z-index:3}
+  td.name button{background:none;color:var(--navy);padding:0;border:0;font-weight:700;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#c9d2de}
+  td.team{text-align:left;color:var(--sub);font-size:.76rem}
+  td.na{color:var(--muted)}
+  td.full{color:var(--ok);font-weight:700}
+  td.zero{color:var(--ng)}
+  td.mark{font-size:.78rem}
+  td.mark.ms{color:var(--ok);font-weight:700}
+  td.total,th.total{border-left:1px solid var(--line);font-weight:700}
+  tr:hover td{background:#f7f9fc}
+  td.team button{background:none;color:var(--sub);padding:0;border:0;font-size:.76rem;text-decoration:underline;text-underline-offset:3px;text-decoration-color:#d5dce6}
+  td.guest,td.mark.guest{color:#9a6a00;background:#fff8e6}
+  tr:hover td.guest{background:#fff1cc}
+  .g{display:block;font-size:.66rem;color:#9a6a00;font-weight:500}
+  .legend .gk{display:inline-block;width:10px;height:10px;border-radius:3px;background:#e2b54a;vertical-align:-1px;margin-right:3px}
+
+  /* 個人 */
+  .overlay{position:fixed;inset:0;background:rgba(10,25,45,.45);display:none;z-index:10;overflow:auto;padding:24px 12px}
+  .overlay.on{display:block}
+  .person.wide{max-width:1100px}
+  .person{max-width:760px;margin:0 auto;background:#fff;border-radius:16px;padding:18px 18px 22px;position:relative}
+  .close{position:absolute;top:12px;right:12px}
+  .p-name{font-size:1.3rem;font-weight:800;margin:0}
+  .p-kana{color:var(--sub);font-size:.8rem}
+  .p-meta{margin-top:6px;font-size:.84rem;color:#3a4657}
+  .stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:16px 0}
+  .stat{background:#f5f7fa;border-radius:12px;padding:10px 12px}
+  .stat b{display:block;font-size:1.35rem}
+  .stat span{font-size:.74rem;color:var(--sub)}
+  .bars{display:flex;gap:6px;align-items:flex-end;height:120px;margin:8px 0 4px;padding-top:16px}
+  .bars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:.68rem;color:var(--sub)}
+  .bars .stack{display:flex;flex-direction:column;justify-content:flex-end;width:100%;max-width:34px;height:100%}
+  .bars i{display:block;width:100%;background:linear-gradient(180deg,var(--navy-2),var(--navy))}
+  .bars i.guest{background:#e2b54a}
+  .bars .stack i:first-child{border-radius:6px 6px 0 0}
+  .bars i.empty{background:#e4e9f0;border-radius:6px 6px 0 0}
+  .bars em{font-style:normal;color:var(--ink);font-weight:700;margin-bottom:2px}
+  h3{font-size:.95rem;margin:18px 0 6px}
+  .list td,.list th{text-align:left}
+  .list td.c{text-align:center}
+  .list tr.guest td{background:#fff8e6}
+  .tag{display:inline-block;font-size:.68rem;color:#9a6a00;background:#fff1cc;border-radius:10px;padding:1px 7px;margin-left:6px}
+</style>
+</head>
+<body>
+<script src="../portal-nav.js?v=20261018a" data-page="出席簿"></script>
+<header>
+  <div class="head-inner">
+    <h1>出席簿</h1>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <label>期：<select id="ki"></select></label>
+    <select id="team"><option value="">全員</option></select>
+    <input id="q" type="search" placeholder="氏名・ふりがなで検索">
+    <select id="sort">
+      <option value="high" selected>出席率の高い順</option>
+      <option value="kana">ふりがな順</option>
+      <option value="low">出席率の低い順</option>
+    </select>
+    <button class="light" id="reload">最新を読み込む</button>
+    <span class="asof" id="asof"></span>
+  </div>
+  <div class="chips" id="months"></div>
+  <div class="card" id="main"><div class="msg">読み込み中…</div></div>
+</div>
+
+<div class="overlay" id="overlay"><div class="person" id="person"></div></div>
+
+<script src="../uketsuke/config.js"></script>
+<script src="../team/team-table.js?v=20261008"></script>
+<script>
+  const API = UKETSUKE_CONFIG.api;
+  const STORE = "book-page:";
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const monthLabel = m => Number(m.slice(5, 7)) + "月";
+  const dayLabel = d => Number(d.slice(5, 7)) + "/" + Number(d.slice(8, 10));
+  const pct = (a, b) => b ? (a / b * 100).toFixed(1) + "%" : "";
+  const shortRole = r => (r || "").replace(/（.*）$/, "");
+
+  const params = new URLSearchParams(location.search);
+  const state = { ki: params.get("ki") || "", month: params.get("month") || "", team: params.get("team") || "", data: null };
+
+  function phrase(){ return localStorage.getItem("team-page:phrase") || ""; }
+  function saved(key){ try { return JSON.parse(localStorage.getItem(STORE + key)); } catch(e){ return null; } }
+  function save(key, v){ try { localStorage.setItem(STORE + key, JSON.stringify(v)); } catch(e){} }
+
+  async function call(query, fresh){
+    const q = new URLSearchParams(Object.assign({ key: API.key, phrase: phrase() }, query));
+    if (fresh) q.set("fresh", "1");
+    const res = await fetch(API.endpoint + "?" + q.toString());
+    const data = await res.json();
+    if (!data.ok && data.error === "needPhrase") throw { needPhrase: true };
+    if (!data.ok) throw new Error(data.error || "読み込めませんでした");
+    return data;
+  }
+
+  /* ---------- 集計（すべて手元のデータから） ---------- */
+  function prepare(d){
+    const msIdx = {};
+    d.months.forEach(m => msIdx[m] = []);
+    d.events.forEach((e, i) => { if (e.kind === "MS" && msIdx[e.month]) msIdx[e.month].push(i); });
+    d.msIdx = msIdx;
+    const now = new Date();
+    const lastMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+    d.members.forEach(p => {
+      /* 印：0〜7＝会員として、A〜H＝ゲストとして（どちらも 朝礼1・MS2・シェア会4 の合計）、.＝記録なし */
+      p.code = i => { const ch = p.marks[i]; return ch === "." ? -1 : ch >= "A" ? ch.charCodeAt(0) - 65 : Number(ch); };
+      p.isGuest = i => p.marks[i] >= "A";
+      p.byMonth = {};
+      p.guestByMonth = {};
+      p.guestTotal = 0;
+      let att = 0, held = 0;
+      d.months.forEach((m, mi) => {
+        const g = msIdx[m].filter(i => p.isGuest(i) && (p.code(i) & 2)).length;
+        p.guestByMonth[m] = g;
+        p.guestTotal += g;
+        if (p.active[mi] === "_") { p.byMonth[m] = { attended: 0, held: 0 }; return; }
+        if (p.active[mi] !== "1") { p.byMonth[m] = null; return; }
+        const idx = msIdx[m];
+        const a = idx.filter(i => !p.isGuest(i) && p.code(i) >= 0 && (p.code(i) & 2)).length;
+        p.byMonth[m] = { attended: a, held: idx.length };
+        att += a; held += idx.length;
+      });
+      p.total = { attended: att, held: held };
+      p.rate = held ? att / held : null;
+      const cur = p.teams.filter(t => t.start && t.start <= lastMonth).pop();
+      p.team = cur ? cur.team : "";
+      p.role = cur ? cur.role : "";
+    });
+  }
+
+  function filtered(){
+    const d = state.data;
+    const q = $("q").value.replace(/\s|　/g, "");
+    let list = d.members.filter(p => {
+      if (state.team && !(state.team === "チーム6役" ? p.sixRoles : p.team === state.team)) return false;
+      if (q && !(p.name + p.kana).replace(/\s|　/g, "").includes(q)) return false;
+      return true;
+    });
+    const s = $("sort").value;
+    if (s !== "kana") {
+      const dir = s === "high" ? -1 : 1;
+      list = list.slice().sort((a, b) => {
+        if (a.rate == null) return 1;
+        if (b.rate == null) return -1;
+        return (a.rate - b.rate) * dir || (a.kana || a.name).localeCompare(b.kana || b.name, "ja");
+      });
+    }
+    return list;
+  }
+
+  /* ---------- 全体の一覧 ---------- */
+  function renderChips(){
+    const d = state.data;
+    const chips = [`<span class="chip ${state.month ? "" : "on"}" data-m="">1年</span>`].concat(
+      d.months.map(m => {
+        const has = d.events.some(e => e.month === m);
+        return `<span class="chip ${state.month === m ? "on" : ""}" data-m="${m}" ${has ? "" : "disabled"}>${monthLabel(m)}</span>`;
+      }));
+    $("months").innerHTML = chips.join("");
+    document.querySelectorAll(".chip").forEach(c => c.onclick = () => {
+      if (c.hasAttribute("disabled")) return;
+      state.month = c.dataset.m; setUrl(); renderChips(); renderTable();
+    });
+  }
+
+  function cell(c, g){
+    if (!c) return g ? `<td class="guest">ゲスト${g}回</td>` : `<td class="na">—</td>`;
+    if (!c.held) return "<td></td>";
+    const cls = c.attended === c.held ? "full" : (c.attended === 0 ? "zero" : "");
+    return `<td class="${cls}">${c.attended}/${c.held}${g ? `<span class="g">＋ゲスト${g}</span>` : ""}</td>`;
+  }
+
+  function markText(e, code){
+    if (code <= 0) return "";
+    if (e.kind !== "MS") return "○";
+    return [code & 1 ? "朝" : "", code & 2 ? "MS" : "", code & 4 ? "シ" : ""].filter(Boolean).join(" ");
+  }
+
+  function renderTable(){
+    const d = state.data;
+    const list = filtered();
+    let head, rows;
+    const nameCells = p => `<td class="name"><button data-key="${esc(p.memberNo || p.name)}">${esc(p.name)}</button>${p.status ? `<span class="tag">${esc(p.status)}</span>` : ""}</td>
+      <td class="team">${p.team && d.teamResults && d.teamResults[p.team] ? `<button data-team="${esc(p.team)}">${esc(p.team)}</button>` : esc(p.team)}</td>`;
+    if (!state.month) {
+      head = `<tr><th class="name">氏名</th><th>チーム</th>${d.months.map(m => `<th>${monthLabel(m)}<small>${d.held[m] ? d.held[m] + "回" : ""}</small></th>`).join("")}<th class="total">期計</th><th>出席率</th></tr>`;
+      rows = list.map(p => `<tr>${nameCells(p)}${d.months.map(m => cell(p.byMonth[m], p.guestByMonth[m])).join("")}
+        <td class="total">${p.total.held ? p.total.attended + "/" + p.total.held : ""}</td><td>${p.rate == null ? "" : pct(p.total.attended, p.total.held)}</td></tr>`).join("");
+    } else {
+      const mi = d.months.indexOf(state.month);
+      const evs = d.events.map((e, i) => ({ e, i })).filter(x => x.e.month === state.month);
+      head = `<tr><th class="name">氏名</th><th>チーム</th>${evs.map(x => `<th>${dayLabel(x.e.date)}<small>${x.e.kind === "MS" ? "MS" : esc(x.e.name)}</small></th>`).join("")}<th class="total">MS</th></tr>`;
+      rows = list.map(p => {
+        const active = p.active[mi] === "1";
+        const c = p.byMonth[state.month];
+        const g = p.guestByMonth[state.month];
+        return `<tr>${nameCells(p)}${evs.map(x => {
+          const code = p.code(x.i);
+          if (p.isGuest(x.i)) return `<td class="mark guest">${markText(x.e, code)}</td>`;
+          if (!active) return `<td class="na">—</td>`;
+          return `<td class="mark ${code > 0 && (code & 2) && x.e.kind === "MS" ? "ms" : ""}">${markText(x.e, code)}</td>`;
+        }).join("")}${c ? `<td class="total">${c.attended}/${c.held}${g ? `<span class="g">＋ゲスト${g}</span>` : ""}</td>` : g ? `<td class="total guest">ゲスト${g}回</td>` : `<td class="total na">—</td>`}</tr>`;
+      }).join("");
+    }
+    $("main").innerHTML = `
+      <div class="count">${list.length}人${state.team ? "（" + esc(state.team) + "）" : ""}</div>
+      <div class="scroll"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div>
+      <div class="legend">${state.month ? "朝＝朝礼　MS＝モーニングセミナー　シ＝シェア会　○＝参加　—＝在籍していない月" : "数字は モーニングセミナーの出席回数/開催回数。—＝在籍していない月。"}
+        <span class="gk"></span>黄色＝入会前にゲストとして参加（出席率には入れていません）。名前を押すとその人の出席簿、チーム名を押すとそのチームの表が開きます。</div>
+      ${d.warnings.length ? `<div class="warn">${d.warnings.map(esc).join("<br>")}</div>` : ""}`;
+    document.querySelectorAll("td.name button").forEach(b => b.onclick = () => openPerson(b.dataset.key));
+    document.querySelectorAll("td.team button").forEach(b => b.onclick = () => openTeam(b.dataset.team));
+  }
+
+  /* ---------- 個人 ---------- */
+  function openPerson(key){
+    const d = state.data;
+    const p = d.members.find(x => (x.memberNo || x.name) === key);
+    if (!p) return;
+    location.hash = encodeURIComponent(key);
+    const msEvents = d.events.map((e, i) => ({ e, i })).filter(x => x.e.kind === "MS" && p.active[d.months.indexOf(x.e.month)] === "1");
+    let streak = 0;
+    for (let k = msEvents.length - 1; k >= 0; k--) { const c = p.code(msEvents[k].i); if (!p.isGuest(msEvents[k].i) && c > 0 && (c & 2)) streak++; else break; }
+    const fullMonths = d.months.filter(m => p.byMonth[m] && p.byMonth[m].held && p.byMonth[m].attended === p.byMonth[m].held).length;
+    const count = bit => msEvents.filter(x => { const c = p.code(x.i); return !p.isGuest(x.i) && c > 0 && (c & bit); }).length;
+    const others = d.events.map((e, i) => ({ e, i })).filter(x => x.e.kind !== "MS" && !p.isGuest(x.i) && p.code(x.i) > 0).length;
+
+    /* 棒の高さは「その月の開催回数」を満杯として、会員としての出席（紺）の上にゲスト参加（黄）を積む */
+    const bars = d.months.map(m => {
+      const c = p.byMonth[m];
+      const g = p.guestByMonth[m] || 0;
+      const held = d.held[m] || 0;
+      const a = c ? c.attended : 0;
+      if (!held || (!a && !g && !(c && c.held))) return `<div><span class="stack"><i class="empty" style="height:4%"></i></span>${monthLabel(m)}</div>`;
+      const label = [c && c.held ? `${a}/${c.held}` : "", g ? `G${g}` : ""].filter(Boolean).join(" ");
+      const hm = a / held * 100, hg = g / held * 100;
+      return `<div><em>${label}</em><span class="stack">${g ? `<i class="guest" style="height:${hg}%"></i>` : ""}${a ? `<i style="height:${hm}%"></i>` : (g ? "" : `<i class="empty" style="height:4%"></i>`)}</span>${monthLabel(m)}</div>`;
+    }).join("");
+
+    const rows = d.events.map((e, i) => ({ e, i })).filter(x => p.isGuest(x.i) || p.active[d.months.indexOf(x.e.month)] === "1").reverse().map(x => {
+      const c = p.code(x.i);
+      const has = b => c > 0 && (c & b) ? "○" : "";
+      const gs = p.isGuest(x.i);
+      const tag = gs ? `<span class="tag">ゲスト</span>` : "";
+      if (x.e.kind !== "MS") return `<tr class="${gs ? "guest" : ""}"><td>${dayLabel(x.e.date)}</td><td>${esc(x.e.name)}${tag}</td><td class="c" colspan="3">${c > 0 ? "参加" : ""}</td></tr>`;
+      return `<tr class="${gs ? "guest" : ""}"><td>${dayLabel(x.e.date)}</td><td>モーニングセミナー${tag}</td><td class="c">${has(1)}</td><td class="c">${has(2)}</td><td class="c">${has(4)}</td></tr>`;
+    }).join("");
+
+    const hist = p.teams.filter(t => t.team).map(t => `${monthLabel(t.start)}〜 ${esc(t.team)}${t.role ? "（" + esc(shortRole(t.role)) + "）" : ""}`).join("　→　");
+
+    $("person").innerHTML = `
+      <button class="light close" id="close">閉じる</button>
+      <p class="p-name">${esc(p.name)}</p>
+      <div class="p-kana">${p.status ? `<span class="tag" style="margin:0 6px 0 0">${esc(p.status)}</span>` : ""}${esc(p.kana)}${p.memberNo ? "　会員番号 " + esc(p.memberNo) : ""}</div>
+      <div class="p-meta">${p.post ? esc(shortRole(p.post)) + "　" : ""}${hist || "チーム所属なし"}</div>
+      <div class="stats">
+        <div class="stat"><b>${p.rate == null ? "—" : pct(p.total.attended, p.total.held)}</b><span>MS出席率（${state.data.ki}）</span></div>
+        <div class="stat"><b>${p.total.attended}/${p.total.held}</b><span>MS出席 / 開催</span></div>
+        <div class="stat"><b>${fullMonths}か月</b><span>皆勤した月</span></div>
+        <div class="stat"><b>${streak}回</b><span>直近の連続出席</span></div>
+        <div class="stat"><b>${count(1)}回</b><span>朝礼</span></div>
+        <div class="stat"><b>${count(4)}回</b><span>シェア会</span></div>
+        ${others ? `<div class="stat"><b>${others}回</b><span>その他の会</span></div>` : ""}
+        ${p.guestTotal ? `<div class="stat" style="background:#fff8e6"><b>${p.guestTotal}回</b><span>入会前のゲスト参加（MS）</span></div>` : ""}
+      </div>
+      <h3>月ごとのMS出席</h3>
+      <div class="bars">${bars}</div>
+      <h3>日ごとの記録（新しい順）</h3>
+      <div class="scroll" style="max-height:none"><table class="list"><thead><tr><th>日付</th><th>会</th><th>朝礼</th><th>MS</th><th>シェア会</th></tr></thead><tbody>${rows || `<tr><td colspan="5">まだ記録がありません</td></tr>`}</tbody></table></div>`;
+    $("person").classList.remove("wide");
+    $("overlay").classList.add("on");
+    $("close").onclick = closePerson;
+  }
+
+  /* チーム名から：出席簿と一緒に受け取ったチームの表を出す（読み込みはしない） */
+  function openTeam(team){
+    const d = state.data;
+    const r = d.teamResults && d.teamResults[team];
+    if (!r) return;
+    $("person").innerHTML = `<button class="light close" id="close">閉じる</button>${teamTableHtml(r)}
+      <div class="legend" style="margin-top:12px"><a href="../team/index.html?ki=${encodeURIComponent(d.ki)}&team=${encodeURIComponent(team)}">チーム別出席のページで見る</a></div>`;
+    $("person").classList.add("wide");
+    $("overlay").classList.add("on");
+    $("close").onclick = closePerson;
+  }
+  function closePerson(){
+    $("overlay").classList.remove("on");
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+  $("overlay").onclick = e => { if (e.target.id === "overlay") closePerson(); };
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closePerson(); });
+
+  /* ---------- 読み込み ---------- */
+  function setUrl(){
+    const q = new URLSearchParams();
+    if (state.ki) q.set("ki", state.ki);
+    if (state.month) q.set("month", state.month);
+    if (state.team) q.set("team", state.team);
+    history.replaceState(null, "", "?" + q.toString() + location.hash);
+  }
+
+  function asOf(iso){
+    const d = new Date(iso);
+    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")} 時点`;
+  }
+
+  function render(d){
+    prepare(d);
+    state.data = d;
+    state.ki = d.ki;
+    if (state.month && !d.months.includes(state.month)) state.month = "";
+    const kis = d.kis || [d.ki];
+    $("ki").innerHTML = kis.map(k => `<option ${k === d.ki ? "selected" : ""}>${esc(k)}</option>`).join("");
+    $("team").innerHTML = `<option value="">全員</option>` + d.teams.map(t => `<option ${t === state.team ? "selected" : ""}>${esc(t)}</option>`).join("");
+    renderChips();
+    renderTable();
+    $("asof").textContent = asOf(d.computedAt);
+    setUrl();
+    const key = decodeURIComponent(location.hash.slice(1));
+    if (key && !$("overlay").classList.contains("on")) openPerson(key);
+  }
+
+  let seq = 0;
+  async function load(fresh){
+    const my = ++seq;
+    const key = "book:" + state.ki;
+    const old = state.ki ? saved(key) : null;
+    if (old) { render(old); if (!fresh) $("asof").textContent = asOf(old.computedAt) + "（更新を確認中…）"; }
+    else { $("main").innerHTML = `<div class="msg">集計中…（数秒かかることがあります）</div>`; $("asof").textContent = ""; }
+    try {
+      const d = await call(state.ki ? { action: "book", ki: state.ki } : { action: "book" }, fresh);
+      if (my !== seq) return;
+      save("book:" + d.ki, d);
+      render(d);
+    } catch (e) {
+      if (my !== seq) return;
+      if (e.needPhrase) { $("main").innerHTML = `<div class="msg">このページは合言葉が必要です。<a href="../team/index.html">チーム別出席</a>で合言葉を入れてから開いてください。</div>`; return; }
+      if (old) $("asof").textContent = asOf(old.computedAt) + "（最新を読み込めませんでした）";
+      else $("main").innerHTML = `<div class="msg">読み込めませんでした：${esc(e.message || e)}</div>`;
+    }
+  }
+
+  $("ki").onchange = () => { state.ki = $("ki").value; state.month = ""; load(false); };
+  $("team").onchange = () => { state.team = $("team").value; setUrl(); renderTable(); };
+  $("q").oninput = () => renderTable();
+  $("sort").onchange = () => renderTable();
+  $("reload").onclick = () => load(true);
+
+  load(false);
+</script>
+</body>
+</html>

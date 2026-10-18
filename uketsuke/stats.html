@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>集計 | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20261006a">
+</head>
+<body>
+<header class="topbar">
+  <h1 id="page-title">この回の集計</h1>
+  <div class="meta">
+    <span class="who">受付担当：<strong id="who-name"></strong>
+      <button type="button" id="btn-logout">切り替え</button>
+    </span>
+    <button type="button" id="btn-reload-now">更新</button>
+    <span id="live-badge" class="live-badge" hidden></span>
+  </div>
+</header>
+<script src="../portal-nav.js?v=20261018a" data-section="uketsuke" data-tab="rireki" data-page="この回の集計"></script>
+
+<div class="wrap">
+  <div class="card stat-locked" id="stat-locked" hidden>
+    <h2 id="stat-locked-title">この回は、まだ受付中です</h2>
+    <p>集計は、受付を締め切ってから見られます。受付が終わったら、受付画面の「締め切る」を押してください。</p>
+    <p style="margin:14px 0 0"><a class="btn" href="index.html">受付画面へ</a></p>
+  </div>
+  <div class="card stat-locked" id="stat-missing" hidden>
+    <h2>集計する回が見つかりません</h2>
+    <p>「履歴・集計」の一覧から、見たい回の「集計を見る」を押してください。</p>
+    <p style="margin:14px 0 0"><a class="btn" href="rireki.html">履歴・集計へ</a></p>
+  </div>
+
+  <div id="stat-body">
+  <div class="card" id="stat-error-card" hidden>
+    <p style="margin:0; color:#a8375a; font-weight:700">⚠️ <span id="stat-error-text"></span></p>
+  </div>
+
+  <div class="card">
+    <h2 id="stat-date-label"></h2>
+    <div class="stat-grid" id="stat-grid"></div>
+  </div>
+
+  <div class="card">
+    <h2>コピー用テキスト（実績報告）</h2>
+    <p class="sub" style="margin:0 0 10px; color:var(--sub)">会長への報告などに、そのままコピー＆ペーストできる文章です。</p>
+    <div class="field" style="max-width:240px; margin-bottom:14px">
+      <span class="lbl">自単会会員数（社）※手入力</span>
+      <input type="number" id="jitan-total-input" min="0" inputmode="numeric" placeholder="例：119">
+    </div>
+    <p class="sub" style="margin:-8px 0 12px; color:var(--sub); font-size:.78rem">名簿の増減に応じて、ここに現在の自単会会員数を入力してください。入力すると「自単会参加率」が計算されます。</p>
+    <pre id="report-text" class="report-text"></pre>
+    <p style="margin:10px 0 0">
+      <button type="button" class="btn small" id="btn-copy-report">コピーする</button>
+      <span id="copy-feedback" style="margin-left:8px; font-size:.82rem; color:var(--ok)"></span>
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>単会別の内訳</h2>
+    <div id="tankai-table"></div>
+  </div>
+
+  <div class="card">
+    <h2 id="roll-title">出席簿</h2>
+    <div id="roll-table"></div>
+  </div>
+  </div><!-- /#stat-body -->
+</div>
+
+<div class="overlay" id="auth-overlay" hidden>
+  <form class="auth-card" id="auth-form">
+    <h2>受付担当の方が使います</h2>
+    <p id="auth-desc">記録に残すお名前を入れてください。合言葉の入力は不要です。</p>
+    <div class="field">
+      <span class="lbl">お名前</span>
+      <input id="auth-name" autocomplete="name" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+    </div>
+    <p class="err" id="auth-error"></p>
+    <button class="btn primary" type="submit">入る</button>
+  </form>
+</div>
+
+<script src="members-data.js?v=20261013a"></script>
+<script src="config.js?v=20261006a"></script>
+<script src="app.js?v=20261007a"></script>
+<script>
+(function () {
+  "use strict";
+  const K = window.UKETSUKE;
+  const U = K.U;
+  const JITAN_TOTAL_KEY = "rinri-uketsuke-jitan-total-v1";
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function jaDateShort(s) {
+    if (!s) return "";
+    const p = s.split("-").map(Number);
+    const dt = new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
+    return (dt.getMonth() + 1) + "月" + dt.getDate() + "日";
+  }
+  function pct(a, b) { return b ? (a / b * 100).toFixed(2) : "0.00"; }
+  function loadJitanTotal() {
+    const v = parseInt(localStorage.getItem(JITAN_TOTAL_KEY) || "", 10);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  }
+  function saveJitanTotal(v) {
+    try {
+      if (v > 0) localStorage.setItem(JITAN_TOTAL_KEY, String(v));
+      else localStorage.removeItem(JITAN_TOTAL_KEY);
+    } catch (e) { /* ignore */ }
+  }
+  function countByType(list) {
+    const member = list.filter(r => r.type === "member").length;
+    const tankai = list.filter(r => r.type === "tankai").length;
+    const guest = list.filter(r => r.type === "guest").length;
+    return { member, tankai, guest, total: member + tankai + guest };
+  }
+  function formatCountRow(label, row) {
+    return label + "　自単会" + row.member + "／他単会" + row.tankai + "／ゲスト" + row.guest + "／計" + row.total;
+  }
+  function buildReportText(c) {
+    const lines = [c.mmdd + " " + c.event + "実績報告", ""];
+    if (c.event === K.DEFAULT_EVENT) {
+      lines.push(formatCountRow("朝礼", c.choureiRow));
+      lines.push(formatCountRow("MS", c.msRow));
+      lines.push(formatCountRow("シェア会", c.shareRow));
+      lines.push(formatCountRow("全体", c.overallRow));
+    } else {
+      (c.attendRows || []).forEach(row => lines.push(formatCountRow(row.label, row)));
+      lines.push(formatCountRow("全体", c.overallRow));
+    }
+    lines.push(formatCountRow("うち女性", c.femaleRow));
+    lines.push("");
+    lines.push("女性参加：" + c.femaleMember + "名／" + c.femaleTotal + "名");
+    lines.push("女性参加率：" + pct(c.femaleMember, c.femaleTotal) + "％");
+    lines.push("女性参加（ゲスト・他単会を含む全体）：" + c.femaleRow.total + "名／" + c.overallRow.total + "名");
+    lines.push("全体に占める女性の割合：" + pct(c.femaleRow.total, c.overallRow.total) + "％");
+    if (c.genderUnknown) lines.push("※性別が未入力の方：" + c.genderUnknown + "名（女性の人数に入っていません）");
+    lines.push("");
+    lines.push("新入会員参加：" + c.newAtSession + "名／" + c.totalNewInRoster + "名");
+    lines.push("新入会員参加率：" + pct(c.newAtSession, c.totalNewInRoster) + "％");
+    lines.push("");
+    lines.push("役員参加：" + c.officerAtSession + "名／" + c.totalOfficerInRoster + "名");
+    lines.push("役員参加率：" + pct(c.officerAtSession, c.totalOfficerInRoster) + "％");
+    lines.push("");
+    if (c.jitanTotal > 0) {
+      lines.push("自単会会員数：" + c.jitanTotal + "社");
+      lines.push("自単会参加率：" + pct(c.overallRow.member, c.jitanTotal) + "％");
+    } else {
+      lines.push("自単会会員数：（未入力）");
+      lines.push("自単会参加率：ー");
+    }
+    return lines.join("\n");
+  }
+  /* 集計する回。URL の ?date=&event= で決まる。無ければ、締め切った回のうち一番新しいもの。 */
+  const target = { date: "", event: K.DEFAULT_EVENT };
+  let rollLoading = false; // スプレッドシートから読み終わるまで、出席簿は「読み込んでいます」にする
+  function newestClosed() {
+    return (U.sessions || []).filter(s => s.status === "締切済み")
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)))[0] || null;
+  }
+  /* 受付中の回は、締め切るまで集計を見せない。 */
+  function applyGate() {
+    const info = target.date ? K.findSessionInfo(target.date, target.event) : null;
+    const missing = !target.date;
+    const locked = !!(info && info.status === "受付中");
+    document.getElementById("stat-missing").hidden = !missing;
+    document.getElementById("stat-locked").hidden = !locked;
+    document.getElementById("stat-body").hidden = missing || locked;
+    if (!missing) {
+      document.getElementById("page-title").textContent = K.jaDate(target.date) + "　" + target.event;
+      if (window.PortalNav) window.PortalNav.setPage(jaDateShort(target.date) + "の集計");
+      if (locked) document.getElementById("stat-locked-title").textContent = jaDateShort(target.date) + "の回は、まだ受付中です";
+    }
+    return !(missing || locked);
+  }
+  function markSynced() {
+    const el = document.getElementById("live-badge");
+    el.hidden = false;
+    el.textContent = "最終更新 " + K.nowHm();
+  }
+
+  function paintStats(date, event, records, stale) {
+    const errCard = document.getElementById("stat-error-card");
+    if (stale) {
+      errCard.hidden = false;
+      document.getElementById("stat-error-text").textContent =
+        "スプレッドシートへの接続が不安定なため、この端末に残っている前回分を表示しています。「更新」をもう一度お試しください。";
+    } else {
+      errCard.hidden = true;
+    }
+    document.getElementById("stat-date-label").textContent = K.jaDate(date) + "／" + event + "の集計";
+
+    const isMsEvent = event === K.DEFAULT_EVENT;
+    const attendItems = K.attendanceForSession(K.findSessionInfo(date, event), event);
+    const overallRecs = records.filter(r => K.recordHasAttendance(r, attendItems));
+    const choureiRow = countByType(records.filter(r => r.chourei));
+    const msRow = countByType(records.filter(r => r.ms));
+    const shareRow = countByType(records.filter(r => r.share));
+    const overallRow = countByType(overallRecs);
+    const isNew = overallRecs.filter(r => r.type === "member" && r.isNew).length;
+    const femaleMember = overallRecs.filter(r => r.type === "member" && r.gender === "女性").length;
+    const femaleRow = countByType(overallRecs.filter(r => r.gender === "女性"));
+    const unknownGuest = overallRecs.filter(r => r.type === "guest" && !r.gender).length;
+    const unknownTankai = overallRecs.filter(r => r.type === "tankai" && !r.gender).length;
+    const genderUnknown = unknownGuest + unknownTankai;
+    const officerAtSession = overallRecs.filter(r => K.recordIsOfficer(r)).length;
+    const totalNewInRoster = U.members.filter(m => K.isNewMemberJoin(m.joined)).length;
+    const femaleTotal = U.members.filter(m => m.gender === "女性").length;
+    const totalOfficerInRoster = U.members.filter(m => K.isOfficerMember(m)).length;
+    const jitanTotal = loadJitanTotal();
+    const attendRows = attendItems.map(a => Object.assign({ label: a.label }, countByType(records.filter(r => r[a.key]))));
+
+    const cells = row =>
+      `<td>${row.member}</td><td>${row.tankai}</td><td>${row.guest}</td><td>${row.total}</td>`;
+    const femaleTr = `<tr class="sub-row"><td>うち女性</td>${cells(femaleRow)}</tr>`;
+    let tableHtml;
+    if (isMsEvent) {
+      tableHtml = `<div class="table-scroll"><table class="stats-table">
+        <thead><tr><th></th><th>自単会</th><th>他単会</th><th>ゲスト</th><th>合計</th></tr></thead>
+        <tbody>
+          <tr><td>朝礼</td>${cells(choureiRow)}</tr>
+          <tr><td>モーニングセミナー</td>${cells(msRow)}</tr>
+          <tr><td>シェア会（朝食会）</td>${cells(shareRow)}</tr>
+        </tbody>
+        <tfoot><tr><td>全体</td>${cells(overallRow)}</tr>${femaleTr}</tfoot>
+      </table></div>
+      <p class="stats-note">全体は同じ人を1回だけ数えます。朝礼・モーニングセミナー・朝食会を足した数ではありません。他の端末の入力を取り込むときは、右上の「更新」を押してください。</p>`;
+    } else {
+      const body = attendRows.map(row => `<tr><td>${esc(row.label)}</td>${cells(row)}</tr>`).join("");
+      tableHtml = `<div class="table-scroll"><table class="stats-table">
+        <thead><tr><th></th><th>自単会</th><th>他単会</th><th>ゲスト</th><th>合計</th></tr></thead>
+        <tbody>${body}</tbody>
+        <tfoot><tr><td>全体</td>${cells(overallRow)}</tr>${femaleTr}</tfoot>
+      </table></div>
+      <p class="stats-note">この回で受付開始時に付けた項目だけを集計しています。全体は同じ人を1回だけ数えます。他の端末の入力を取り込むときは、右上の「更新」を押してください。</p>`;
+    }
+    const rateLine = (label, a, b) =>
+      `<div class="rate-row"><span>${label}</span><strong>${a}名／${b}名</strong><span class="pct">${pct(a, b)}％</span></div>`;
+    if (genderUnknown) {
+      tableHtml += `<p class="stats-note">性別が未入力の方が ${genderUnknown} 名います（${
+        [unknownGuest ? "ゲスト " + unknownGuest + "名" : "", unknownTankai ? "他単会 " + unknownTankai + "名" : ""].filter(Boolean).join("・")
+      }）。この方々は「うち女性」に入っていません。受付画面の「修正」から選べます。</p>`;
+    }
+    tableHtml += `<div class="stats-rates">
+      ${rateLine("女性参加（自単会・名簿の女性会員のうち）", femaleMember, femaleTotal)}
+      ${rateLine("女性参加（ゲスト・他単会を含む全体のうち）", femaleRow.total, overallRow.total)}
+      ${rateLine("新入会員参加", isNew, totalNewInRoster)}
+      ${rateLine("役員参加", officerAtSession, totalOfficerInRoster)}
+      ${jitanTotal > 0
+        ? rateLine("自単会参加", overallRow.member, jitanTotal)
+        : `<div class="rate-row"><span>自単会参加</span><strong>会員数未入力</strong><span class="pct">ー</span></div>`}
+    </div>`;
+    document.getElementById("stat-grid").innerHTML = tableHtml;
+    document.getElementById("report-text").textContent = buildReportText({
+      mmdd: jaDateShort(date), event,
+      choureiRow, msRow, shareRow, overallRow, attendRows,
+      femaleMember, femaleTotal, femaleRow, genderUnknown, newAtSession: isNew, totalNewInRoster,
+      officerAtSession, totalOfficerInRoster,
+      jitanTotal
+    });
+    document.getElementById("copy-feedback").textContent = "";
+
+    const byTankai = {};
+    overallRecs.forEach(r => {
+      const t = r.type === "guest" ? "ゲスト" : (r.tankai || UKETSUKE_CONFIG.jitanKai);
+      byTankai[t] = (byTankai[t] || 0) + 1;
+    });
+    const entries = Object.entries(byTankai).sort((a, b) => b[1] - a[1]);
+    document.getElementById("tankai-table").innerHTML = entries.length
+      ? `<table class="list"><thead><tr><th>単会</th><th>人数</th></tr></thead><tbody>${
+          entries.map(([t, c]) => `<tr><td>${esc(t)}</td><td>${c}</td></tr>`).join("")
+        }</tbody></table>`
+      : '<p style="color:#6b7686; font-size:.86rem">データがありません。</p>';
+
+    const TYPE_ORDER = { member: 0, tankai: 1, guest: 2 };
+    const TYPE_LABEL = { member: "会員", tankai: "他単会", guest: "ゲスト" };
+    const roll = overallRecs.slice().sort((a, b) =>
+      (TYPE_ORDER[a.type] ?? 3) - (TYPE_ORDER[b.type] ?? 3)
+      || String(a.kana || a.name || "").localeCompare(String(b.kana || b.name || ""), "ja"));
+    if (rollLoading) {
+      document.getElementById("roll-title").textContent = "出席簿";
+      document.getElementById("roll-table").innerHTML =
+        '<p class="roll-loading">出席簿を読み込んでいます…（少し時間がかかることがあります）</p>';
+      return;
+    }
+    document.getElementById("roll-title").textContent = "出席簿（" + roll.length + "名）";
+    document.getElementById("roll-table").innerHTML = roll.length
+      ? `<div class="table-scroll"><table class="list roll">
+          <thead><tr><th>No.</th><th>区分</th><th>氏名</th><th>単会</th>${
+            attendItems.map(a => `<th class="c">${esc(K.attendShort(a, event))}</th>`).join("")
+          }</tr></thead>
+          <tbody>${roll.map((r, i) => `<tr>
+            <td>${i + 1}</td>
+            <td>${esc(TYPE_LABEL[r.type] || r.type || "")}</td>
+            <td>${esc(r.name)}</td>
+            <td>${esc(r.type === "guest" ? "" : (r.tankai || UKETSUKE_CONFIG.jitanKai))}</td>
+            ${attendItems.map(a => `<td class="c">${r[a.key] ? "○" : ""}</td>`).join("")}
+          </tr>`).join("")}</tbody></table></div>`
+      : '<p style="color:#6b7686; font-size:.86rem">データがありません。</p>';
+  }
+
+  function paintFromLocal() {
+    if (!applyGate()) return;
+    paintStats(target.date, target.event, K.recordsFromLocal(target.date, target.event), false);
+  }
+
+  let reloading = false;
+  async function reloadFromServer() {
+    if (reloading) return;
+    reloading = true;
+    const btn = document.getElementById("btn-reload-now");
+    btn.disabled = true;
+    btn.textContent = "更新中…";
+    rollLoading = true;
+    paintFromLocal();
+    try {
+      await K.fetchSessions();
+      if (!target.date) {
+        const s = newestClosed();
+        if (s) { target.date = s.date; target.event = s.event || K.DEFAULT_EVENT; }
+      }
+      if (!applyGate()) return;
+      const fresh = await K.fetchRecords(target.date, target.event);
+      rollLoading = false;
+      paintStats(target.date, target.event, fresh, !!fresh._stale);
+      if (!fresh._stale) markSynced();
+    } catch (e) {
+      document.getElementById("stat-error-card").hidden = false;
+      document.getElementById("stat-error-text").textContent = "データの取得に失敗しました：" + e.message;
+    } finally {
+      if (rollLoading) { rollLoading = false; paintFromLocal(); }
+      reloading = false;
+      btn.disabled = false;
+      btn.textContent = "更新";
+    }
+  }
+
+  function showAuthGate() {
+    document.getElementById("auth-overlay").hidden = false;
+    document.getElementById("auth-name").value = U.who.name || "";
+    document.getElementById("auth-name").focus();
+  }
+  function hideAuthGate() { document.getElementById("auth-overlay").hidden = true; }
+
+  document.getElementById("auth-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = document.getElementById("auth-name").value.trim();
+    if (!name) return;
+    U.who = { name, key: K.currentKey() };
+    K.saveAuth();
+    hideAuthGate();
+    document.getElementById("who-name").textContent = name;
+    boot();
+  });
+  document.getElementById("btn-logout").addEventListener("click", () => {
+    U.who = { name: "", key: "" };
+    K.saveAuth();
+    showAuthGate();
+  });
+
+  document.getElementById("btn-reload-now").addEventListener("click", reloadFromServer);
+  document.getElementById("jitan-total-input").addEventListener("change", (e) => {
+    saveJitanTotal(parseInt(e.target.value, 10) || 0);
+    paintFromLocal();
+  });
+  document.getElementById("btn-copy-report").addEventListener("click", async () => {
+    const text = document.getElementById("report-text").textContent;
+    const fb = document.getElementById("copy-feedback");
+    try {
+      await navigator.clipboard.writeText(text);
+      fb.textContent = "コピーしました。";
+    } catch (err) {
+      fb.textContent = "コピーできませんでした。テキストを選択して手動でコピーしてください。";
+    }
+  });
+
+  function boot() {
+    document.getElementById("jitan-total-input").value = loadJitanTotal() || "";
+    K.sessionsFromLocal();
+    const params = new URLSearchParams(location.search);
+    const qDate = (params.get("date") || "").trim();
+    const qEvent = (params.get("event") || "").trim();
+    const s = qDate ? null : newestClosed();
+    target.date = qDate || (s ? s.date : "");
+    target.event = qEvent || (s && s.event) || K.DEFAULT_EVENT;
+    reloadFromServer();
+  }
+
+  K.bindDateFaces();
+  K.loadMembers();
+  K.loadAuth();
+  if (K.needsAuthGate()) {
+    showAuthGate();
+  } else {
+    document.getElementById("who-name").textContent = U.who.name;
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f2f4f">
+<title>配席（MS・朝食会） | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20261006a">
+<style>
+  /* ============================================================
+     MS・朝食会 配席
+
+     色は役ごとに決める（画像の haiseki.js COLORS と同じ）。
+       ゲスト＝水色の地、アテンド＝紺の枠、会長＝赤、講話者＝ピンク、リーダー＝緑、司会・お役＝金
+     名前が入っていない席は薄いグレーにして目立たせない。
+     ============================================================ */
+  body{background:var(--bg)}
+  .wrap{max-width:1500px; margin:0 auto; padding:12px 14px 60px}
+  .topbar{padding:12px 20px 14px}
+  .topbar h1{font-size:1.1rem}
+  body:not(.edit) .edit-only{display:none !important}
+
+  /* ---- 上の操作 ---- */
+  .bar{display:flex; flex-wrap:wrap; align-items:center; gap:10px; background:#fff; border:1px solid #e6ebf2; border-radius:14px;
+    padding:10px 12px; margin-bottom:10px; box-shadow:0 4px 14px rgba(20,45,80,.05)}
+  .datebox{display:flex; align-items:center; gap:4px}
+  .datebox button.nav{border:0; background:#f1f4f8; width:36px; height:36px; border-radius:10px; font-size:1.1rem; color:var(--navy); cursor:pointer}
+  #date-label{font-weight:800; font-size:1.02rem; min-width:11.5em; text-align:center}
+  .kinds{display:flex; background:#f1f4f8; border-radius:999px; padding:3px}
+  .kinds button{border:0; background:none; border-radius:999px; padding:7px 16px; font-weight:800; font-size:.9rem; color:var(--sub); cursor:pointer; font-family:inherit}
+  .kinds button[aria-pressed="true"]{background:var(--navy); color:#fff}
+  .bar .sp{flex:1}
+  .status{font-size:.8rem; color:var(--sub)}
+  .status.dirty{color:#b4441f; font-weight:800}
+  .who{display:flex; align-items:center; gap:6px; font-size:.78rem; color:var(--sub)}
+  .who input{width:7.5em; padding:7px 9px; border:1px solid var(--line); border-radius:8px; font:inherit; font-size:.88rem}
+  .btn{border:1px solid var(--line); background:#fff; color:var(--navy); border-radius:10px; padding:8px 13px; font-weight:800;
+    font-size:.86rem; cursor:pointer; font-family:inherit; white-space:nowrap}
+  .btn.primary{background:var(--navy); border-color:var(--navy); color:#fff}
+  .btn.primary.ready{background:#c2410c; border-color:#c2410c}
+  .btn:disabled{opacity:.6; cursor:wait}
+  .sub-tools{display:flex; flex-wrap:wrap; gap:8px 14px; margin:-2px 4px 10px; font-size:.8rem}
+  .btn-sm{border:1px solid currentColor; background:#fff; color:inherit; border-radius:8px; padding:4px 10px; font-weight:800; font-size:.78rem; cursor:pointer; font-family:inherit; margin-left:4px}
+  .btn-sm.ghost{border-color:transparent; text-decoration:underline}
+
+  .notice{border:1px solid #e8d5a8; background:#fffaf0; color:#7a6224; border-radius:10px; padding:9px 12px; font-size:.84rem; line-height:1.7; margin-bottom:10px}
+  .picking{position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:10px; background:#0f2f4f; color:#fff;
+    border-radius:12px; padding:10px 14px; margin-bottom:10px; font-weight:800; font-size:.92rem; box-shadow:0 6px 18px rgba(10,32,54,.25)}
+  .picking span{flex:1}
+  .picking button{border:0; background:#fff; color:#0f2f4f; border-radius:8px; padding:6px 12px; font-weight:800; cursor:pointer; font-family:inherit}
+  .warn{list-style:none; margin:0 0 10px; padding:0; display:flex; flex-direction:column; gap:4px}
+  .warn li{border-radius:9px; padding:7px 12px; font-size:.82rem; font-weight:700; line-height:1.55}
+  .warn li.ng{background:#fdecea; color:#a32a1c; border:1px solid #f4c7c0}
+  .warn li.warn{background:#fff6e5; color:#8a5a00; border:1px solid #f0d9a6}
+  .warn li.info{background:#f1f4f8; color:#4a5566; border:1px solid #e1e6ee}
+
+  /* ---- 今日のMS（進行表。席図の上） ---- */
+  .program{background:#fff; border:1px solid #d7e0ec; border-radius:14px; padding:12px 14px 13px; margin-bottom:12px;
+    box-shadow:0 4px 14px rgba(20,45,80,.05)}
+  .program[hidden]{display:none}
+  .program-head{display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; margin-bottom:8px}
+  .program-head h2{margin:0; font-size:.95rem; color:var(--navy)}
+  .program-head a{margin-left:auto; font-size:.76rem; color:var(--sub)}
+  .ptags{display:flex; flex-wrap:wrap; gap:5px}
+  .ptag{display:inline-block; border-radius:999px; padding:3px 10px; font-size:.74rem; font-weight:800; background:#eef1f6; color:#30475e}
+  .ptag.hot{background:#fdecea; color:#a32a1c}
+  .ptag.ok{background:#e4f2ea; color:#2f6f4e}
+  .ptag.pink{background:#fff0f7; color:#a33a74}
+  .ptag.gold{background:#fff6e0; color:#8a6620}
+  .p-gear{display:flex; flex-wrap:wrap; gap:8px 16px; margin:2px 0 10px; font-size:.9rem; font-weight:800}
+  .p-gear span{display:inline-flex; align-items:center; gap:6px}
+  .p-gear .on{color:#a32a1c}
+  .p-gear .off{color:#6b7686; font-weight:700}
+  .p-gear b{font-size:.78rem; color:var(--sub); font-weight:800}
+  .p-people{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:8px}
+  .p-card{border:1px solid #ead6e4; background:#fffafd; border-radius:12px; padding:9px 12px}
+  .p-card.speech{border-color:#d6e4d8; background:#f6fbf7}
+  .p-card .k{font-size:.7rem; font-weight:800; color:#cf4f95; letter-spacing:.04em}
+  .p-card.speech .k{color:#2f6f4e}
+  .p-card .nm{font-size:1.12rem; font-weight:800; line-height:1.3; margin-top:2px}
+  .p-card .kn{display:block; font-size:.78rem; color:#7a4a68; font-weight:700}
+  .p-card.speech .kn{color:#3d6b50}
+  .p-card .call{margin-top:4px; font-size:.8rem; color:#30475e; line-height:1.45}
+  .p-card .ttl{margin-top:4px; font-size:.88rem; font-weight:800; color:#0f2f4f; line-height:1.4; white-space:pre-line}
+  .p-empty{font-size:.84rem; color:var(--sub); margin:0}
+
+  /* ---- 本体：左にゲスト、右に席図 ---- */
+  .main{display:grid; grid-template-columns:minmax(0,1fr); gap:14px; align-items:start}
+  .main > *{min-width:0}
+  body.edit .main{grid-template-columns:330px minmax(0,1fr)}
+  @media(max-width:980px){ body.edit .main{grid-template-columns:minmax(0,1fr)} }
+
+  .pool{background:#fff; border:1px solid #e6ebf2; border-radius:14px; padding:10px; box-shadow:0 4px 14px rgba(20,45,80,.05);
+    position:sticky; top:8px; max-height:calc(100vh - 16px); overflow:auto; user-select:none; -webkit-user-select:none}
+  @media(max-width:980px){ .pool{position:static; max-height:none} }
+  .pool.drop-on{outline:3px dashed #2f86d6; outline-offset:-3px}
+  .pool-head{display:flex; align-items:baseline; justify-content:space-between; margin:2px 4px 8px}
+  .pool-head h2{margin:0; font-size:.95rem}
+  .pool-head span{font-size:.78rem; color:var(--sub); font-weight:700}
+  .pool-head.sm{margin-top:14px}
+  .pool-empty{color:var(--sub); font-size:.82rem; line-height:1.7; margin:8px 4px}
+  .pool-more summary{cursor:pointer; font-size:.8rem; font-weight:800; color:var(--sub); margin:12px 4px 8px}
+  .g-item{border:1px solid #d7e6f6; border-radius:12px; margin-bottom:8px; overflow:hidden; background:#fff}
+  .g-item.seated{border-color:#e6ebf2}
+  .g-main{display:grid; grid-template-columns:1fr auto; gap:0 8px; width:100%; text-align:left; border:0; background:#e3f1ff;
+    padding:9px 11px 8px; cursor:grab; font-family:inherit; color:inherit; border-left:6px solid #2f86d6}
+  .g-item.seated .g-main{background:#f4f8fc; border-left-color:#a9c9ea}
+  .g-main.picked{outline:3px solid #c2410c; outline-offset:-3px}
+  .g-kana{grid-column:1; font-size:.8rem; color:#3c6a96; font-weight:700}
+  .g-name{grid-column:1; font-size:1.2rem; font-weight:800; line-height:1.3}
+  .g-name small{font-size:.7em; margin-left:2px; color:#3c6a96}
+  .g-ref{grid-column:1; font-size:.8rem; color:#30475e; margin-top:2px}
+  .g-marks{grid-column:1; display:flex; flex-wrap:wrap; gap:4px; margin-top:5px}
+  .g-marks i{font-style:normal; font-size:.68rem; font-weight:800; border-radius:999px; padding:1px 8px; background:#fff; color:#8a6620; border:1px solid #ecd59a}
+  .g-at{grid-column:2; grid-row:1 / span 4; align-self:center; font-size:.8rem; font-weight:800; color:#2f6f4e; background:#e4f2ea;
+    border-radius:8px; padding:4px 8px; white-space:nowrap}
+  .g-at.none{color:#a32a1c; background:#fdecea}
+  .g-att{display:flex; flex-wrap:wrap; gap:6px; padding:8px 10px 9px}
+  .chip{display:inline-flex; align-items:center; gap:6px; border:1.5px solid #1f4e8c; background:#fff; border-radius:9px; padding:5px 9px;
+    cursor:grab; font-family:inherit; color:inherit; font-size:.86rem; text-align:left}
+  .chip .c-role{font-size:.66rem; font-weight:800; color:#fff; background:#1f4e8c; border-radius:5px; padding:1px 5px}
+  .chip .c-name{font-weight:800}
+  .chip .c-at{font-size:.72rem; font-weight:800; color:#2f6f4e}
+  .chip .c-at.none{color:#a32a1c}
+  .chip.seated{border-color:#c6d0dc; background:#f7f9fb}
+  .chip.picked{outline:3px solid #c2410c}
+  .chip.c-missing{border-style:dashed; border-color:#b4441f; color:#b4441f; cursor:pointer}
+  .chip.c-missing .c-role{background:#b4441f}
+  .chip.c-leader{border-color:#3c9a4c} .chip.c-leader .c-role{background:#3c9a4c}
+  .chip.c-chair{border-color:#d2493a} .chip.c-chair .c-role{background:#d2493a}
+  .chip.c-speaker{border-color:#cf4f95} .chip.c-speaker .c-role{background:#cf4f95}
+  .chip.c-mc,.chip.c-yaku{border-color:#b9861b} .chip.c-mc .c-role,.chip.c-yaku .c-role{background:#b9861b}
+  .chip.c-member{border-color:#8a96a8} .chip.c-member .c-role{background:#8a96a8}
+  .chip.c-guest{border-color:#2f86d6; background:#e3f1ff} .chip.c-guest .c-role{background:#2f86d6}
+
+  /* ---- 席図 ---- */
+  .board-box{background:#fff; border:1px solid #e6ebf2; border-radius:14px; padding:12px; box-shadow:0 4px 14px rgba(20,45,80,.05); overflow-x:auto}
+  .board-min{min-width:720px}
+  .board{position:relative; width:100%; container-type:inline-size; user-select:none; -webkit-user-select:none}
+  .board .front{position:absolute; left:0; right:0; top:0; height:3.3%; background:var(--navy); color:#fff; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.7cqw; letter-spacing:.2em}
+  .table{position:absolute; border-radius:50%; background:#eef1f6; border:2px solid #c3cbd7; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; color:#8a96a8; line-height:1.15; text-align:center}
+  .table b{font-size:3.1cqw}
+  .table em{font-style:normal; font-size:1.25cqw; font-weight:800}
+  .table span{font-size:1.05cqw; font-weight:800; color:#2f6f4e}
+  .seat{position:absolute; box-sizing:border-box; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; line-height:1.2; padding:2px 4px; overflow:hidden; background:#fff; border:2px solid #8a96a8}
+  body.edit .seat{cursor:pointer}
+  body.edit .seat[data-drag]{cursor:grab}
+  .seat .s-top{font-size:1.45cqw; font-weight:800; color:#3c6a96; line-height:1.15; white-space:normal; max-width:100%}
+  .seat.r-guest .s-top{font-size:1.2cqw; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .seat .s-name{font-size:2.05cqw; font-weight:800; color:#16202e; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
+  .seat .s-name small{font-size:.62em; margin-left:1px}
+  .seat .s-sub{font-size:1.05cqw; font-weight:600; color:#3c6a96; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
+  .seat.long .s-name{font-size:1.7cqw}
+  .seat.xlong .s-name{font-size:1.4cqw}
+  .seat.narrow .s-name{font-size:1.6cqw}
+  .seat.narrow.long .s-name{font-size:1.25cqw}
+  .seat.narrow .s-top{font-size:1.15cqw}
+  .seat.narrow .s-sub{font-size:.9cqw}
+  .seat .s-mark{position:absolute; top:-1px; right:-1px; font-style:normal; font-size:.85cqw; font-weight:800; background:#c8a24a; color:#fff; border-radius:0 6px 0 6px; padding:1px 4px}
+  .seat.empty{background:#f6f8fb; border:1.5px solid #dde3eb}
+  .seat .s-hint{font-size:1.85cqw; font-weight:800; color:#6b7686; line-height:1.2; white-space:normal; max-width:96%; padding:0 2px}
+  .seat.empty.h-leader{border-color:#cfe6d3}
+  .seat.empty.h-leader .s-hint{color:#7fb98a}
+  .seat.empty.h-chair .s-hint{color:#e0938a}
+  .seat.empty.h-speaker .s-hint{color:#e39ac2}
+  .seat.empty.h-mc .s-hint,.seat.empty.h-yaku .s-hint{color:#cfae63}
+  .board.picking .seat.target{border:2px dashed #c2410c; background:#fff7f2}
+  .board.picking .seat[data-drag]{box-shadow:0 0 0 2px rgba(194,65,12,.25)}
+  .seat.drop-on{outline:3px solid #c2410c; outline-offset:1px}
+  .seat.picked{outline:3px solid #c2410c; outline-offset:1px}
+  .seat.ghost{border:2px dashed #1f4e8c; background:#f2f6fc; opacity:.85}
+  .seat.ghost .s-top,.seat.ghost .s-sub{color:#1f4e8c}
+  .seat.ghost .s-name{color:#1f4e8c}
+  .seat.r-guest{background:#e3f1ff; border:3px solid #2f86d6}
+  .seat.r-guest .s-name{color:#0d3b66}
+  .seat.r-attend{border-color:#1f4e8c} .seat.r-attend .s-top{color:#1f4e8c; font-weight:800}
+  .seat.r-leader{border-color:#3c9a4c} .seat.r-leader .s-top{color:#3c9a4c; font-weight:800}
+  .seat.r-chair{border-color:#d2493a; background:#fff1ef} .seat.r-chair .s-top{color:#d2493a; font-weight:800}
+  .seat.r-speaker{border-color:#cf4f95; background:#fff0f7} .seat.r-speaker .s-top{color:#cf4f95; font-weight:800}
+  .seat.r-mc,.seat.r-yaku{border-color:#b9861b; background:#fffaf0} .seat.r-mc .s-top,.seat.r-yaku .s-top{color:#9a6e10; font-weight:800}
+
+  .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:10px 2px 0; font-size:.78rem; color:var(--sub); font-weight:700}
+  .legend i{display:inline-block; width:18px; height:12px; border-radius:3px; border:2.5px solid; vertical-align:-1px; margin-right:5px}
+
+  .drag-ghost{position:fixed; z-index:100; pointer-events:none; transform:translate(-50%,-130%); background:#0f2f4f; color:#fff; font-weight:800;
+    border-radius:9px; padding:6px 12px; font-size:.92rem; box-shadow:0 8px 20px rgba(0,0,0,.25); white-space:nowrap}
+  body.dragging, body.dragging *{cursor:grabbing !important}
+
+  /* ---- 卓ごとの一覧（スマホでも読める） ---- */
+  .list{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; margin-top:14px}
+  .list section{background:#fff; border:1px solid #e6ebf2; border-radius:12px; padding:10px 12px}
+  .list h3{margin:0 0 6px; font-size:.92rem; color:var(--navy)}
+  .list ul{list-style:none; margin:0; padding:0}
+  .list li{display:grid; grid-template-columns:5.6em 1fr; gap:0 8px; padding:5px 0; border-top:1px solid #f0f2f6; font-size:.88rem}
+  .list li:first-child{border-top:0}
+  .l-role{font-size:.72rem; font-weight:800; color:var(--sub); padding-top:2px}
+  .l-name{font-weight:800}
+  .l-name small{display:block; font-size:.74rem; font-weight:600; color:#3c6a96}
+  .l-sub{grid-column:2; font-size:.76rem; color:#30475e}
+  .list li.r-guest .l-role{color:#2f86d6}
+  .list li.r-guest .l-name{color:#0d3b66}
+  .list li.r-attend .l-role{color:#1f4e8c}
+  .list li.r-leader .l-role{color:#3c9a4c}
+  .list li.r-chair .l-role{color:#d2493a}
+  .list li.r-speaker .l-role{color:#cf4f95}
+  .list li.r-mc .l-role,.list li.r-yaku .l-role{color:#9a6e10}
+
+  /* ---- ダイアログ ---- */
+  dialog{border:0; border-radius:16px; padding:0; width:min(520px,calc(100vw - 24px)); box-shadow:0 20px 50px rgba(10,20,35,.35)}
+  dialog::backdrop{background:rgba(10,20,35,.45)}
+  .dlg{padding:16px 18px 18px}
+  .dlg h2{margin:0 0 12px; font-size:1.02rem}
+  .dlg h3{margin:14px 0 6px; font-size:.8rem; color:var(--sub)}
+  .dlg input[type=text],.dlg input[type=search]{width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--line); border-radius:10px; font:inherit; font-size:1rem}
+  .dlg .row{display:flex; gap:8px}
+  .dlg .row input{flex:1}
+  .cands{display:flex; flex-wrap:wrap; gap:6px}
+  .cands .chip{cursor:pointer}
+  .hits{display:flex; flex-direction:column; gap:4px; margin-top:6px; max-height:240px; overflow:auto}
+  .hit{display:flex; align-items:baseline; gap:10px; text-align:left; border:1px solid var(--line); background:#fff; border-radius:9px; padding:8px 11px; cursor:pointer; font-family:inherit; color:inherit}
+  .hit b{font-size:1rem}
+  .hit span{font-size:.8rem; color:var(--sub)}
+  .hit em{margin-left:auto; font-style:normal; font-size:.72rem; color:#2f6f4e; font-weight:800}
+  .roles{display:flex; flex-wrap:wrap; gap:6px}
+  .role-btn{border:1.5px solid #c9d1dc; background:#fff; border-radius:999px; padding:6px 12px; font-weight:800; font-size:.82rem; cursor:pointer; font-family:inherit; color:var(--ink)}
+  .role-btn[aria-pressed="true"]{color:#fff; background:#1f4e8c; border-color:#1f4e8c}
+  .role-btn.r-leader[aria-pressed="true"]{background:#3c9a4c; border-color:#3c9a4c}
+  .role-btn.r-chair[aria-pressed="true"]{background:#d2493a; border-color:#d2493a}
+  .role-btn.r-speaker[aria-pressed="true"]{background:#cf4f95; border-color:#cf4f95}
+  .role-btn.r-mc[aria-pressed="true"],.role-btn.r-yaku[aria-pressed="true"]{background:#b9861b; border-color:#b9861b}
+  .role-btn.r-member[aria-pressed="true"]{background:#8a96a8; border-color:#8a96a8}
+  .role-btn.r-guest[aria-pressed="true"]{background:#2f86d6; border-color:#2f86d6}
+  .dlg-foot{display:flex; justify-content:flex-end; gap:8px; margin-top:16px; flex-wrap:wrap}
+  .seat-where{font-size:.78rem; color:var(--sub); font-weight:800}
+  .seat-name{font-size:1.4rem; font-weight:800; margin:2px 0 8px}
+  .seat-name small{display:block; font-size:.8rem; color:#3c6a96; font-weight:700}
+  .seat-info{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:0; font-size:.88rem}
+  .seat-info dt{color:var(--sub); font-weight:800; font-size:.76rem; padding-top:2px}
+  .seat-info dd{margin:0}
+  .btn.danger{color:#a32a1c; border-color:#f0c0b8}
+
+  .foot-note{margin:16px 2px 0; font-size:.74rem; color:#a6adb8; line-height:1.8}
+
+  @media print{
+    body{background:#fff}
+    .bar,.sub-tools,.notice,.picking,.warn,.pool,.list,.foot-note,.topbar{display:none !important}
+    body.edit .main{grid-template-columns:1fr}
+    .board-box{border:0; box-shadow:none; padding:0}
+    .board-min{min-width:0}
+    @page{size:A4 portrait; margin:8mm}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>配席（モーニングセミナー・朝食会）</h1>
+</header>
+<script src="../portal-nav.js?v=20261018a" data-section="uketsuke" data-tab="haiseki"></script>
+
+<div class="wrap">
+  <div class="bar">
+    <div class="datebox">
+      <button type="button" class="nav" id="prev" aria-label="前の週">‹</button>
+      <span id="date-label"></span>
+      <button type="button" class="nav" id="next" aria-label="次の週">›</button>
+    </div>
+    <div class="kinds" role="group" aria-label="配席の種類">
+      <button type="button" data-kind="ms">モーニングセミナー</button>
+      <button type="button" data-kind="choshoku">朝食会</button>
+    </div>
+    <span class="sp"></span>
+    <span class="status" id="status"></span>
+    <label class="who edit-only">保存する人<input type="text" id="who" placeholder="お名前" autocomplete="name"></label>
+    <button type="button" class="btn primary edit-only" id="btn-save">保存</button>
+    <button type="button" class="btn" id="btn-image">画像にする（LINE用）</button>
+  </div>
+  <div class="sub-tools">
+    <button type="button" class="linklike" id="btn-today">次のMSにもどる</button>
+    <button type="button" class="linklike" id="btn-reload">更新</button>
+    <button type="button" class="linklike" id="btn-link">見る用のリンクをコピー</button>
+    <button type="button" class="linklike edit-only" id="btn-template" hidden></button>
+    <button type="button" class="linklike edit-only" id="btn-clear">すべての席を空ける</button>
+  </div>
+
+  <div class="notice" id="notice" hidden></div>
+  <div class="picking edit-only" id="picking" hidden><span id="picking-text"></span><button type="button" id="picking-cancel">やめる</button></div>
+  <ul class="warn edit-only" id="warn" hidden></ul>
+
+  <div class="main">
+    <aside class="pool edit-only" id="pool" aria-label="ゲストとアテンド"></aside>
+    <div>
+      <div class="program" id="program" hidden></div>
+      <div class="board-box">
+        <div class="board-min"><div class="board" id="board"></div></div>
+        <div class="legend">
+          <span><i style="border-color:#2f86d6;background:#e3f1ff"></i>ゲスト</span>
+          <span><i style="border-color:#1f4e8c"></i>アテンド</span>
+          <span><i style="border-color:#d2493a;background:#fff1ef"></i>会長</span>
+          <span><i style="border-color:#cf4f95;background:#fff0f7"></i>講話者</span>
+          <span><i style="border-color:#3c9a4c"></i>テーブルリーダー</span>
+          <span><i style="border-color:#b9861b;background:#fffaf0"></i>司会・お役</span>
+          <span><i style="border-color:#dde3eb;background:#f6f8fb;border-width:1.5px"></i>自由席</span>
+        </div>
+      </div>
+      <div class="list" id="list"></div>
+    </div>
+  </div>
+
+  <p class="foot-note">
+    <span class="edit-only">ゲストは左の一覧から席へ運ぶか、名前を押してから空いている席を押します。席から席へ運ぶと入れ替わり、左の一覧へ戻すと席から外れます。空いている席を押すと、名簿から会員を探して置けます。<br></span>
+    名前が入っていない席は自由席です。ゲストの一覧は受付・紹介者フォームで登録されたゲスト情報から出しています。<br>
+    ゲストの個人情報が含まれます。URL を会員以外に共有しないでください。
+  </p>
+</div>
+
+<dialog id="picker">
+  <div class="dlg">
+    <h2 id="picker-title"></h2>
+    <div id="picker-cands-box">
+      <h3>まだ席がないゲスト・アテンド</h3>
+      <div class="cands" id="picker-cands"></div>
+    </div>
+    <h3>名簿から探す（ふりがなで）</h3>
+    <input type="search" id="picker-q" placeholder="例：すが" autocomplete="off">
+    <div class="hits" id="picker-hits"></div>
+    <div id="picker-roles-box">
+      <h3>この方の役</h3>
+      <div class="roles" id="picker-roles"></div>
+    </div>
+    <h3>名簿にない方（外部の講話者・飛び入りのゲストなど）</h3>
+    <div class="row"><input type="text" id="picker-free" placeholder="お名前"><button type="button" class="btn" id="picker-free-add">置く</button></div>
+    <div class="dlg-foot"><button type="button" class="btn" id="picker-close">閉じる</button></div>
+  </div>
+</dialog>
+
+<dialog id="seat-dialog">
+  <div class="dlg">
+    <div class="seat-where" id="seat-where"></div>
+    <div class="seat-name" id="seat-name"></div>
+    <dl class="seat-info" id="seat-info"></dl>
+    <div id="seat-roles-box">
+      <h3>役を変える</h3>
+      <div class="roles" id="seat-roles"></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn danger" id="seat-remove">席から外す</button>
+      <button type="button" class="btn" id="seat-move">別の席へ動かす</button>
+      <button type="button" class="btn primary" id="seat-close">閉じる</button>
+    </div>
+  </div>
+</dialog>
+
+<script>if (new URLSearchParams(location.search).get("edit") === "1") document.body.classList.add("edit");</script>
+<script src="members-data.js?v=20261013a"></script>
+<script src="config.js?v=20261011a"></script>
+<script src="app.js?v=20261007a"></script>
+<script src="haiseki-layouts.js?v=20261018a"></script>
+<script src="haiseki-program.js?v=20261018c"></script>
+<script src="haiseki-image.js?v=20261018d"></script>
+<script src="haiseki.js?v=20261018d"></script>
+</body>
+</html>

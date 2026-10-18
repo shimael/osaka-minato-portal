@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>過去の集計 | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20261006a">
+</head>
+<body>
+<header class="topbar">
+  <h1>履歴・集計</h1>
+  <p class="sub">締め切り済みのモーニングセミナーです。数字は縦に並ぶので、回ごとの増減を見比べられます。</p>
+  <div class="meta">
+    <button type="button" id="btn-reload-now">最新を読み込む</button>
+    <span id="live-badge" class="live-badge" hidden></span>
+  </div>
+</header>
+<script src="../portal-nav.js?v=20261018a" data-section="uketsuke" data-tab="rireki"></script>
+
+<div class="wrap past-wrap">
+  <div class="view-switch" role="tablist" aria-label="表示の切り替え">
+    <a href="rireki.html">回の一覧</a>
+    <a href="shukei.html" aria-current="page">モーニングセミナーの比較</a>
+  </div>
+  <div class="card" id="index-error-card" hidden>
+    <p style="margin:0; color:#a8375a; font-weight:700">⚠️ <span id="index-error-text"></span></p>
+  </div>
+  <div id="index-app"><p style="color:var(--sub); font-size:.86rem">読み込んでいます…</p></div>
+</div>
+
+<script src="../ms/history-data.js?v=20260917g"></script>
+<script src="members-data.js?v=20261013a"></script>
+<script src="config.js?v=20261006a"></script>
+<script src="app.js?v=20261007a"></script>
+<script>
+(function () {
+  "use strict";
+  const K = window.UKETSUKE;
+  const U = K.U;
+  const MS_HISTORY_KEY = "rinri-ms-history-v1";
+  let msByDate = {};
+  let filling = false;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function num(v) {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? n : 0;
+  }
+  function dateLabel(date) {
+    const full = K.jaDate(date);
+    const i = full.indexOf("年");
+    if (i < 0) return esc(full);
+    return `<span class="y">${esc(full.slice(0, i + 1))}</span>${esc(full.slice(i + 1))}`;
+  }
+  function queryDate() {
+    return (new URLSearchParams(location.search).get("date") || "").trim();
+  }
+  function loadMsHistoryByDate() {
+    const byDate = {};
+    function add(sessions) {
+      (sessions || []).forEach(s => {
+        if (s && s.date) byDate[s.date] = s;
+      });
+    }
+    const snap = window.MS_HISTORY_SNAPSHOT;
+    if (snap && Array.isArray(snap.sessions)) add(snap.sessions);
+    try {
+      const local = JSON.parse(localStorage.getItem(MS_HISTORY_KEY) || "null");
+      if (local && Array.isArray(local.sessions)) add(local.sessions);
+    } catch (e) { /* ignore */ }
+    return byDate;
+  }
+  function hasAnyMark(r, attendItems) {
+    const items = attendItems && attendItems.length ? attendItems : K.msAttendance();
+    return items.some(a => r[a.key]);
+  }
+  function closedMsSessions(sessions) {
+    return (sessions || []).filter(s => {
+      if (!s || !s.date) return false;
+      const event = s.event || K.DEFAULT_EVENT;
+      if (event !== K.DEFAULT_EVENT) return false;
+      return s.status !== "受付中";
+    });
+  }
+  function attendItemsFor(s) {
+    const event = s.event || K.DEFAULT_EVENT;
+    return K.attendanceForSession(K.findSessionInfo(s.date, event), event);
+  }
+  function guestLabel(name) {
+    const n = String(name || "").trim() || "（無名）";
+    return /さん$/.test(n) ? n : n + "さん";
+  }
+  function peopleCell(list, emptyText) {
+    const bits = (list || []).map(p => {
+      const name = String((p && p.speakerName) || "").trim();
+      if (!name) return "";
+      const org = String(p.speakerOrg || "").trim();
+      return `<span class="who"><span class="nm">${esc(name)}</span>${org ? `<span class="org">${esc(org)}</span>` : ""}</span>`;
+    }).filter(Boolean);
+    return bits.length ? bits.join("") : `<span class="muted">${emptyText}</span>`;
+  }
+  function countsOf(s) {
+    const event = s.event || K.DEFAULT_EVENT;
+    const recs = K.recordsFromLocal(s.date, event);
+    if (recs.length) {
+      const items = attendItemsFor(s);
+      const overall = recs.filter(r => hasAnyMark(r, items));
+      return {
+        recs,
+        chourei: recs.filter(r => r.chourei).length,
+        ms: recs.filter(r => r.ms).length,
+        share: recs.filter(r => r.share).length,
+        total: overall.length,
+        guestCount: overall.filter(r => r.type === "guest").length
+      };
+    }
+    return {
+      recs,
+      chourei: num(s.chourei),
+      ms: num(s.ms),
+      share: num(s.share),
+      total: num(s.total),
+      guestCount: num(s.guest)
+    };
+  }
+  function guestHtml(s, recs) {
+    const items = attendItemsFor(s);
+    const guests = recs.filter(r => r.type === "guest").slice().sort((a, b) => (a.id || "").localeCompare(b.id || ""));
+    if (guests.length) {
+      return guests.map(r => {
+        const arrived = hasAnyMark(r, items);
+        return `<span class="g ${arrived ? "in" : "out"}">${esc(guestLabel(r.name))}</span>`;
+      }).join("");
+    }
+    if (num(s.guest)) return `<span class="muted">氏名未取込</span>`;
+    if (recs.length) return `<span class="muted">なし</span>`;
+    return `<span class="muted">—</span>`;
+  }
+  function speakerHtml(list, tag) {
+    const badge = tag ? `<span class="past-tag">${esc(tag)}</span>` : "";
+    return badge + peopleCell(list, "—");
+  }
+  function programHtml(date) {
+    const hist = msByDate[date];
+    if (!hist) {
+      return `<div class="past-prog">
+        <div><span class="k">講話</span><span class="muted">—</span></div>
+        <div><span class="k">スピーチ</span><span class="muted">—</span></div>
+      </div>`;
+    }
+    if (hist.recess) return `<div class="past-prog"><span class="nm">休会</span></div>`;
+    const tag = String(hist.eventTag || "").trim();
+    return `<div class="past-prog">
+      <div>${tag ? `<span class="past-tag">${esc(tag)}</span>` : ""}<span class="k">講話</span>${peopleCell(hist.kowa, "—")}</div>
+      <div><span class="k">スピーチ</span>${peopleCell(hist.speech, "—")}</div>
+    </div>`;
+  }
+  function extraHtml(s, recs) {
+    return `<div class="past-extra">
+      <div class="past-extra-block"><span class="k">ゲスト</span>${guestHtml(s, recs)}</div>
+      <div class="past-extra-block">${programHtml(s.date)}</div>
+    </div>`;
+  }
+  function programDeskCells(date) {
+    const hist = msByDate[date];
+    if (!hist) {
+      return `<td class="txt kowa desk-only"><span class="muted">—</span></td><td class="txt speech desk-only"><span class="muted">—</span></td>`;
+    }
+    if (hist.recess) {
+      return `<td class="txt desk-only" colspan="2">休会</td>`;
+    }
+    const tag = String(hist.eventTag || "").trim();
+    return `<td class="txt kowa desk-only">${speakerHtml(hist.kowa, tag)}</td><td class="txt speech desk-only">${speakerHtml(hist.speech, "")}</td>`;
+  }
+
+  function rowHtml(s) {
+    const event = s.event || K.DEFAULT_EVENT;
+    const c = countsOf(s);
+    const q = queryDate();
+    const on = q && q === s.date;
+    return `<tr class="past-tr${on ? " is-target" : ""}" data-date="${esc(s.date)}" data-event="${esc(event)}" id="sess-${esc(s.date)}">
+      <td class="d">
+        <div class="past-date">${dateLabel(s.date)}</div>
+        <div class="phone-only">${extraHtml(s, c.recs)}</div>
+      </td>
+      <td class="n">${c.chourei}</td>
+      <td class="n">${c.ms}</td>
+      <td class="n">${c.share}</td>
+      <td class="n total">${c.total}</td>
+      <td class="txt guests desk-only">${guestHtml(s, c.recs)}</td>
+      ${programDeskCells(s.date)}
+    </tr>`;
+  }
+
+  function paintList(sessions, stale) {
+    const errCard = document.getElementById("index-error-card");
+    if (stale) {
+      errCard.hidden = false;
+      document.getElementById("index-error-text").textContent =
+        "スプレッドシートへの接続が不安定なため、この端末に残っている前回分を表示しています。「最新を読み込む」をもう一度お試しください。";
+    } else {
+      errCard.hidden = true;
+    }
+    const list = closedMsSessions(sessions);
+    const app = document.getElementById("index-app");
+    if (!list.length) {
+      app.innerHTML = '<p class="past-empty-page">まだ締め切り済みのモーニングセミナーがありません。右上の「最新を読み込む」で取り込みます。</p>';
+      return;
+    }
+    app.innerHTML = `<div class="past-scroll"><table class="past-table">
+      <thead>
+        <tr>
+          <th class="d">日付</th>
+          <th class="n">朝礼</th>
+          <th class="n">MS</th>
+          <th class="n">シェア会</th>
+          <th class="n total">合計</th>
+          <th class="txt desk-only">ゲスト</th>
+          <th class="txt desk-only">講話</th>
+          <th class="txt desk-only">会員スピーチ</th>
+        </tr>
+      </thead>
+      <tbody>${list.map(rowHtml).join("")}</tbody>
+    </table></div>`;
+    const qDate = queryDate();
+    if (qDate) {
+      const el = document.getElementById("sess-" + qDate);
+      if (el) el.scrollIntoView({ block: "start" });
+    }
+  }
+
+  function paintCard(date, event) {
+    const s = (U.sessions || []).find(x => x.date === date && (x.event || K.DEFAULT_EVENT) === event);
+    const row = [...document.querySelectorAll(".past-tr")].find(el =>
+      el.dataset.date === date && el.dataset.event === event
+    );
+    if (!s || !row) return;
+    const wrap = document.createElement("tbody");
+    wrap.innerHTML = rowHtml(s);
+    row.replaceWith(wrap.firstElementChild);
+  }
+
+  function markSynced() {
+    const el = document.getElementById("live-badge");
+    el.hidden = false;
+    el.textContent = "最終更新 " + K.nowHm();
+  }
+
+  function needsGuestFetch(s) {
+    if (num(s.guest) <= 0) return false;
+    const recs = K.recordsFromLocal(s.date, s.event || K.DEFAULT_EVENT);
+    return !recs.some(r => r.type === "guest");
+  }
+
+  async function fillGuestNames(sessions) {
+    const missing = closedMsSessions(sessions).filter(needsGuestFetch);
+    if (!missing.length || !K.endpointReady() || filling) return;
+    filling = true;
+    const btn = document.getElementById("btn-reload-now");
+    let done = 0;
+    let fails = 0;
+    let i = 0;
+    const workers = Math.min(2, missing.length);
+    async function worker() {
+      while (i < missing.length && fails < 3) {
+        const s = missing[i++];
+        const event = s.event || K.DEFAULT_EVENT;
+        try {
+          const fresh = await K.fetchRecords(s.date, event);
+          if (fresh && fresh._stale) fails += 1;
+          else fails = 0;
+          paintCard(s.date, event);
+        } catch (e) {
+          fails += 1;
+        }
+        done += 1;
+        if (btn && filling) btn.textContent = "氏名を取り込み中 " + done + "/" + missing.length;
+      }
+    }
+    await Promise.all(Array.from({ length: workers }, worker));
+    filling = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "最新を読み込む";
+    }
+  }
+
+  let reloading = false;
+  async function reloadFromServer() {
+    if (reloading) return;
+    reloading = true;
+    const btn = document.getElementById("btn-reload-now");
+    btn.disabled = true;
+    btn.textContent = "読み込み中…";
+    try {
+      const sessions = await K.fetchSessions();
+      paintList(sessions, !!(sessions && sessions._stale));
+      if (K.endpointReady() && !(sessions && sessions._stale)) markSynced();
+      await fillGuestNames(sessions);
+    } catch (e) {
+      document.getElementById("index-error-card").hidden = false;
+      document.getElementById("index-error-text").textContent = "データの取得に失敗しました：" + e.message;
+      paintList(K.sessionsFromLocal(), true);
+    } finally {
+      reloading = false;
+      filling = false;
+      btn.disabled = false;
+      btn.textContent = "最新を読み込む";
+    }
+  }
+
+  document.getElementById("btn-reload-now").addEventListener("click", reloadFromServer);
+
+  function boot() {
+    msByDate = loadMsHistoryByDate();
+    K.sessionsFromLocal();
+    paintList(U.sessions || [], false);
+  }
+
+  K.loadMembers();
+  K.loadAuth();
+  U.who = { name: U.who.name || "閲覧", key: K.currentKey() };
+  boot();
+})();
+</script>
+</body>
+</html>

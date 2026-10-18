@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>受付用紙（印刷） | 大阪みなと倫理法人会</title>
+<style>@page{ size:A4 portrait; margin:8mm 10mm }</style>
+<style>
+  /* 用紙の高さの内訳（A4縦297mm − 上下余白8mm×2 = 有効高さ281mm）
+       ヘッダー行   8.8mm
+       表の見出し   9mm（1段）
+       記入行      15mm × 17行 = 255mm
+       合計       272.8mm  … 罫線の誤差ぶんだけ余らせて1枚に収める */
+  :root{
+    --ink:#16202e; --line:#000; --sub:#6b7686; --navy:#0f2f4f;
+    --row-h:15mm;             /* 名前を書く欄の高さ＝1.5cm */
+    /* ○を書く欄のグレー。印刷したときに白に近く見える濃さにしてある。
+       濃いと手書きの○が読みにくくなるので、これ以上濃くしないこと。 */
+    --mark-bg:#fafbfc;
+    --mark-head-bg:#f3f5f8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:#eef1f6; color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;}
+  /* 画面上だけの「用紙の選び方」。印刷には出さない。
+     タブを2段に並べるとリンクが連なって見えるので、会の種類ごとに
+     カードを分け、その中で自単会／ゲスト／他単会を選ぶ形にする。 */
+  .chooser{max-width:920px; margin:0 auto; padding:16px 18px 0}
+  .chooser-head a{font-size:.82rem; color:#16436c; text-decoration:none}
+  .chooser-head h1{margin:6px 0 0; font-size:1.18rem; letter-spacing:.02em}
+  .chooser-head p{margin:4px 0 0; font-size:.8rem; color:var(--sub); line-height:1.55}
+  .chooser-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px}
+  .chooser-group{
+    background:#fff; border:1px solid #e3e8ef; border-radius:14px; padding:14px 16px 16px;
+    box-shadow:0 4px 14px rgba(20,45,80,.05)
+  }
+  .chooser-group h2{margin:0; font-size:.95rem}
+  .chooser-group .lead{margin:4px 0 12px; font-size:.74rem; color:var(--sub); line-height:1.5}
+  .event-heads{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:-4px 0 12px}
+  .event-heads input{
+    width:100%; border:1px solid #dfe4ec; border-radius:8px; padding:6px 8px;
+    font-size:.74rem; color:var(--ink); font-family:inherit; background:#f6f8fb
+  }
+  .paper-picks{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+  .paper-picks button{
+    background:#f6f8fb; border:1px solid #dfe4ec; border-radius:10px;
+    padding:11px 6px 10px; cursor:pointer; color:var(--ink); font-family:inherit
+  }
+  .paper-picks button .who{display:block; font-weight:800; font-size:.84rem}
+  .paper-picks button .what{display:block; margin-top:3px; font-size:.68rem; color:var(--sub); line-height:1.35}
+  .paper-picks button.on{background:var(--navy); color:#fff; border-color:var(--navy)}
+  .paper-picks button.on .what{color:rgba(255,255,255,.72)}
+  .chooser-actions{
+    margin-top:12px; display:flex; align-items:center; gap:14px; flex-wrap:wrap
+  }
+  .chooser-actions button.print{
+    background:var(--navy); color:#fff; border:0; border-radius:10px;
+    padding:11px 18px; font-size:.88rem; font-weight:700; cursor:pointer; white-space:nowrap
+  }
+  .chooser-actions .note{margin:0; font-size:.74rem; color:#93a0b3}
+
+  /* .sheet は A4 縦の実寸。画面上のプレビューと印刷結果が同じ大きさになる。 */
+  .sheet{width:210mm; height:297mm; margin:16px auto 60px; padding:8mm 10mm; background:#fff;
+    box-shadow:0 4px 16px rgba(20,45,80,.08)}
+  .sheet h1{font-size:3.7mm; line-height:1; margin:0; letter-spacing:.02em; white-space:nowrap}
+
+  /* 日付・記入者は当日その場で手書きする。題名のすぐ右に置いて、
+     余った幅を全部この2つに配ることで、書く幅をできるだけ広く取っている
+     （題名の長さが用紙によって変わるので、固定幅にすると紙からはみ出す）。
+     見出し行そのものには下線を引かない（記入欄の下線と二重に見えてしまうため）。 */
+  .head-line{display:flex; align-items:flex-end; gap:7mm; height:6.6mm; margin-bottom:2.6mm}
+  .head-line h1{flex:0 0 auto}
+  .meta-fields{flex:1 1 auto; min-width:0; display:flex; gap:7mm;
+    font-size:2.9mm; line-height:1; white-space:nowrap}
+  .meta-fields span{flex:1 1 0; min-width:0; border-bottom:0.3mm solid #666; padding:0 0 0.6mm 1mm}
+  .meta-fields .f-writer{flex:1.4 1 0}
+
+  table{width:100%; border-collapse:collapse; table-layout:fixed}
+  th,td{border:0.3mm solid var(--line); padding:0 1.4mm; overflow:hidden}
+  th{font-weight:700; letter-spacing:.01em; text-align:center; vertical-align:middle}
+  td{vertical-align:middle}
+
+  /* 見出しは1段だけ。「出席確認（参加する会に○）」の帯は置かず、
+     朝礼・モーニングセミナー・シェア会をそのまま並べる。 */
+  thead th{height:9mm; font-size:2.8mm; line-height:1.25; background:#fff}
+  thead th.mark-head{background:var(--mark-head-bg)}
+  /* 紙の上では「朝食会」と呼ぶが、受付画面とスプレッドシートは「シェア会」。
+     入力する人が迷わないよう、括弧で両方を出しておく。 */
+  thead th .sub-label{font-size:2.3mm; font-weight:400}
+  /* 手書きする欄と○を付ける欄の境目だけ、太い線で分ける */
+  th.group-edge-l,td.group-edge-l{border-left:0.7mm solid var(--line)}
+  th.group-edge-r,td.group-edge-r{border-right:0.7mm solid var(--line)}
+
+  tbody td{height:var(--row-h)}
+  td.no{text-align:center; color:var(--sub); font-size:2.6mm}
+  tbody td.mark-cell{background:var(--mark-bg); text-align:center}
+  /* （○）の下書き。「なぞればいい」と分かる程度の薄さにとどめる。
+     濃くすると、書いた○と下書きが見分けられなくなる。 */
+  .circle-guide{display:inline-block; width:7mm; height:7mm; border:0.3mm dotted #c8ced6; border-radius:50%}
+
+  @media print{
+    body{background:#fff}
+    .chooser{display:none}
+    .sheet{box-shadow:none; margin:0; padding:0; width:auto; height:auto}
+    .sheet[hidden]{display:none !important}
+    /* グレーの塗りを印刷にも出す */
+    *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  }
+  @media screen and (max-width:900px){
+    .sheet{zoom:.52}
+    .chooser-grid{grid-template-columns:1fr}
+  }
+  @media screen and (max-width:560px){
+    .paper-picks{grid-template-columns:1fr}
+    .chooser-actions button.print{width:100%}
+  }
+  [hidden]{display:none !important}
+</style>
+</head>
+<body>
+
+<script src="../portal-nav.js?v=20261018a" data-section="uketsuke" data-tab="print"></script>
+<div class="chooser">
+  <div class="chooser-head">
+    <h1>受付用紙</h1>
+    <p>印刷する用紙を選んでください。下に出ているのが、そのまま紙の見た目です。</p>
+  </div>
+  <div class="chooser-grid">
+    <section class="chooser-group">
+      <h2>モーニングセミナー</h2>
+      <p class="lead">朝礼・モーニングセミナー・朝食会の3列です。</p>
+      <div class="paper-picks">
+        <button type="button" data-mode="ms" data-sheet="jitan"><span class="who">自単会</span><span class="what">名簿にある方</span></button>
+        <button type="button" data-mode="ms" data-sheet="guest"><span class="who">ゲスト</span><span class="what">お客様</span></button>
+        <button type="button" data-mode="ms" data-sheet="tankai"><span class="who">他単会</span><span class="what">他の倫理法人会</span></button>
+      </div>
+    </section>
+    <section class="chooser-group">
+      <h2>イベント</h2>
+      <p class="lead">列の名前は受付開始時に決めた項目です。ここでも直せます。</p>
+      <div class="event-heads">
+        <input id="print-a1" value="参加" autocomplete="off">
+        <input id="print-a2" placeholder="例：懇親会" autocomplete="off">
+        <input id="print-a3" placeholder="任意" autocomplete="off">
+      </div>
+      <div class="paper-picks">
+        <button type="button" data-mode="event" data-sheet="jitan"><span class="who">自単会</span><span class="what">名簿にある方</span></button>
+        <button type="button" data-mode="event" data-sheet="guest"><span class="who">ゲスト</span><span class="what">お客様</span></button>
+        <button type="button" data-mode="event" data-sheet="tankai"><span class="who">他単会</span><span class="what">他の倫理法人会</span></button>
+      </div>
+    </section>
+  </div>
+  <div class="chooser-actions">
+    <button type="button" class="print" onclick="window.print()">この用紙を印刷する</button>
+    <p class="note">1枚あたり17名分にしています</p>
+  </div>
+</div>
+
+<div class="sheet" id="sheet-jitan"></div>
+<div class="sheet" id="sheet-guest" hidden></div>
+<div class="sheet" id="sheet-tankai" hidden></div>
+
+<script>
+  /* 用紙の種類。○を付ける列の構成だけが違う。
+     ・モーニングセミナー用：朝礼／モーニングセミナー／朝食会（シェア会）
+     ・イベント用：参加／（空欄）
+       2列目を空欄にしてあるのは、懇親会などその回だけの項目を、
+       当日その場で見出しに手書きして使ってもらうため。 */
+  const MODES = {
+    ms: {
+      titlePrefix: "",
+      marks: ["朝礼", "モーニング<br>セミナー", '朝食会<br><span class="sub-label">（シェア会）</span>']
+    },
+    event: {
+      titlePrefix: "イベント用・",
+      marks: ["参加", ""]
+    }
+  };
+
+  // 名前欄は1.5cm（=15mm）の高さを優先して確保する。
+  // 20名を基準にすると1行あたり13mmを切って書きにくくなるため、A4縦1枚に
+  // 15mmの行がちょうど収まる17行に調整している。
+  const ROWS = 17;
+
+  // colWidths: 先頭から [No, 名前, ...追加項目, ...○を付ける列] の割合（合計100）
+  function buildColgroup(colWidths) {
+    return `<colgroup>${colWidths.map(w => `<col style="width:${w}%">`).join("")}</colgroup>`;
+  }
+
+  function buildSheet(opts, mode) {
+    // opts = { title, extraCols: [{label,width}], noWidth, nameWidth, markWidth }
+    // ○の列が3列から減ったぶんの幅は、いちばん書きにくい「名前」に回す。
+    const marks = mode.marks;
+    const nameWidth = opts.nameWidth + opts.markWidth * (3 - marks.length);
+    const colWidths = [opts.noWidth, nameWidth, ...opts.extraCols.map(c => c.width), ...marks.map(() => opts.markWidth)];
+
+    // 書く欄と○を付ける欄の境目に太い線を引くため、両端の列に印を付ける
+    const edge = i => (i === 0 ? " group-edge-l" : "") + (i === marks.length - 1 ? " group-edge-r" : "");
+
+    let head = `<th>No.</th><th>名前</th>`;
+    opts.extraCols.forEach(c => { head += `<th>${c.label}</th>`; });
+    marks.forEach((label, i) => { head += `<th class="mark-head${edge(i)}">${label || "&nbsp;"}</th>`; });
+
+    const markCells = marks.map((_, i) =>
+      `<td class="mark-cell${edge(i)}"><span class="circle-guide"></span></td>`
+    ).join("");
+
+    // 番号は印刷しない（当日その場で書き足せるよう空欄にしておく）
+    let rows = "";
+    for (let i = 1; i <= ROWS; i++) {
+      let tds = `<td class="no">&nbsp;</td><td>&nbsp;</td>`;
+      opts.extraCols.forEach(() => { tds += `<td>&nbsp;</td>`; });
+      tds += markCells;
+      rows += `<tr>${tds}</tr>`;
+    }
+
+    return `
+      <div class="head-line">
+        <h1>大阪みなと倫理法人会　受付リスト（${mode.titlePrefix}${opts.title}）</h1>
+        <div class="meta-fields">
+          <span class="f-date">日付：</span>
+          <span class="f-writer">記入者：</span>
+        </div>
+      </div>
+      <table>
+        ${buildColgroup(colWidths)}
+        <thead><tr>${head}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  const SHEET_CONFIG = {
+    // 自単会：フリガナなし。名前欄をいちばん広く取る。
+    jitan: {
+      title: "自単会", noWidth: 6, nameWidth: 46, markWidth: 16,
+      extraCols: []
+    },
+    // ゲスト：ゲスト本人が書くので、紹介者・アテンド・備考は置かない。
+    guest: {
+      title: "ゲスト", noWidth: 6, nameWidth: 32, markWidth: 12,
+      extraCols: [{ label: "ふりがな", width: 26 }]
+    },
+    // 他単会：名前のすぐ横がふりがな、そのあとに単会名。性別欄は置かない。
+    tankai: {
+      title: "他単会", noWidth: 5, nameWidth: 24, markWidth: 10,
+      extraCols: [{ label: "ふりがな", width: 22 }, { label: "単会名", width: 19 }]
+    }
+  };
+
+  const KINDS = ["jitan", "guest", "tankai"];
+  // ?mode=event&kind=guest のように付けると、その用紙を直接開ける
+  const params = new URLSearchParams(location.search);
+  let mode = params.get("mode") === "event" ? "event" : "ms";
+  let kind = KINDS.includes(params.get("kind")) ? params.get("kind") : "jitan";
+
+  function eventMarks() {
+    const raw = ["print-a1", "print-a2", "print-a3"].map(id => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : "";
+    });
+    const labels = raw.filter(Boolean);
+    if (!labels.length) return ["参加", ""];
+    if (labels.length === 1 && !raw[1] && !raw[2]) return [labels[0], ""];
+    return labels;
+  }
+  function currentMode() {
+    if (mode === "ms") return MODES.ms;
+    return { titlePrefix: "イベント用・", marks: eventMarks() };
+  }
+
+  function pageUrl() {
+    const q = new URLSearchParams();
+    if (mode === "event") {
+      q.set("mode", "event");
+      ["print-a1", "print-a2", "print-a3"].forEach((id, i) => {
+        const v = document.getElementById(id) && document.getElementById(id).value.trim();
+        if (v) q.set("a" + (i + 1), v);
+      });
+    }
+    if (kind !== "jitan") q.set("kind", kind);
+    const s = q.toString();
+    return s ? "print.html?" + s : "print.html";
+  }
+
+  function renderSheets() {
+    KINDS.forEach(k => {
+      document.getElementById("sheet-" + k).innerHTML = buildSheet(SHEET_CONFIG[k], currentMode());
+    });
+  }
+
+  function render() {
+    renderSheets();
+    KINDS.forEach(k => { document.getElementById("sheet-" + k).hidden = k !== kind; });
+    document.querySelectorAll(".paper-picks button").forEach(b => {
+      b.classList.toggle("on", b.dataset.mode === mode && b.dataset.sheet === kind);
+    });
+    history.replaceState(null, "", pageUrl());
+  }
+
+  ;[1, 2, 3].forEach(i => {
+    const v = (params.get("a" + i) || "").trim();
+    if (v) document.getElementById("print-a" + i).value = v;
+  });
+  document.querySelectorAll(".paper-picks button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      mode = btn.dataset.mode;
+      kind = btn.dataset.sheet;
+      render();
+    });
+  });
+  ["print-a1", "print-a2", "print-a3"].forEach(id => {
+    document.getElementById(id).addEventListener("input", () => { if (mode === "event") render(); });
+  });
+  render();
+</script>
+</body>
+</html>

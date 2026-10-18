@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f2f4f">
+<title>新入会員バッジ贈呈 | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20261006a">
+<style>
+  /* ============================================================
+     新入会員バッジ贈呈（会長挨拶でバッジを贈呈する前に、スマホで開いて見るページ）
+
+     知りたいことは「誰に贈呈するか」と「今日来ているか」。
+     来ている方だけ名前を呼ぶので、来ている方を先に出し、まだの方はグレーに沈める。
+     ?edit=1 を付けて開くと、上に入力欄が出る（事前に入れておく人だけが使う）。
+     ============================================================ */
+  body{background:var(--bg)}
+  .wrap{max-width:760px; margin:0 auto; padding:14px 14px 60px}
+  .topbar{padding:12px 20px 14px}
+  .topbar h1{font-size:1.1rem}
+
+  .when{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    padding:2px 4px 12px; font-size:.82rem; color:var(--sub);
+  }
+  .when-date{font-weight:800; color:var(--ink); font-size:.9rem; line-height:1.45}
+  .when-status{
+    display:inline-block; margin-left:8px; vertical-align:middle;
+    font-size:.68rem; font-weight:800; letter-spacing:.04em; border-radius:999px; padding:2px 8px;
+  }
+  .when-status.open{background:#eef6f0; color:var(--ok)}
+  .when-status.closed{background:#fdf0f0; color:#a8375a}
+  .when-actions{display:flex; align-items:center; gap:10px; font-size:.74rem}
+
+  .tally-top{margin:0 2px 12px; font-size:.84rem; color:var(--sub); line-height:1.6}
+  .tally-top b{color:var(--ink); font-weight:800}
+  .tally-top .ok{color:var(--ok); font-weight:800}
+  .notice{
+    border:1px solid #e8d5a8; background:#fffaf0; color:#7a6224;
+    border-radius:10px; padding:9px 12px; font-size:.78rem; line-height:1.6; margin-bottom:12px;
+  }
+  .foot-note{margin:16px 2px 0; font-size:.72rem; color:#a6adb8; line-height:1.7}
+
+  .entry{
+    background:#fff; border:1px solid #eaeef4; border-radius:14px; padding:14px 16px; margin-bottom:16px;
+    box-shadow:0 4px 14px rgba(20,45,80,.06);
+  }
+  .entry h2{margin:0 0 12px; font-size:.95rem}
+  .entry-grid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px}
+  .entry-grid .wide{grid-column:1/-1}
+  .picked{
+    margin-top:8px; font-size:.8rem; color:var(--sub); line-height:1.5;
+  }
+  .picked b{color:var(--ink)}
+  .entry .save-row{margin-top:14px}
+  @media(max-width:560px){ .entry-grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>新入会員バッジ贈呈</h1>
+</header>
+
+<div class="wrap">
+
+  <section class="entry" id="entry" hidden>
+    <h2>贈呈する方を登録する</h2>
+    <div class="entry-grid">
+      <div class="field">
+        <span class="lbl">贈呈する日</span>
+        <div class="date-wrap">
+          <span class="date-face" aria-hidden="true"></span>
+          <input id="b-date" type="date">
+        </div>
+      </div>
+      <div class="field">
+        <span class="lbl">メモ（何月入会など）</span>
+        <input id="b-memo" placeholder="例：8月入会" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="field wide">
+        <span class="lbl">お名前（ふりがなや名前を入れると、名簿から候補が出ます）</span>
+        <div class="search-box">
+          <input id="b-q" type="text" placeholder="例：ふじい" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <div id="b-suggest" class="suggest" hidden></div>
+        </div>
+        <div class="picked" id="b-picked"></div>
+      </div>
+    </div>
+    <p class="save-row"><button type="button" class="btn" id="b-add">追加する</button></p>
+  </section>
+
+  <div class="when">
+    <span class="when-date" id="when-date"></span>
+    <span class="when-actions">
+      <span id="updated"></span>
+      <button type="button" class="btn small ghost" id="btn-reload">更新</button>
+    </span>
+  </div>
+
+  <p class="tally-top" id="tally"></p>
+  <div class="notice" id="notice" hidden></div>
+  <div id="list"><p class="bv-empty">最新を読み込んでいます…</p></div>
+
+  <p class="foot-note">
+    来ている方だけお名前を呼ぶための一覧です。受付で会員として登録されると「来ています」に変わります。<br>
+    開いたときと、画面に戻ったときに最新を読みます。開いたままのときは右上の「更新」を押してください。
+  </p>
+</div>
+
+<script src="members-data.js?v=20261013a"></script>
+<script src="config.js?v=20261006a"></script>
+<script src="app.js?v=20261007a"></script>
+<script src="badge-view.js?v=20261006a"></script>
+<script>
+(function () {
+  "use strict";
+  const K = window.UKETSUKE;
+  const U = K.U;
+  const params = new URLSearchParams(location.search);
+  const editMode = params.get("edit") === "1";
+
+  K.loadMembers();
+  K.loadAuth();
+  U.who = { name: U.who.name || (editMode ? "バッジ贈呈の入力" : ""), key: K.currentKey() };
+
+  let session = null;     // 見ている日の回（受付が始まっていなければ null）
+  let badgeDate = (params.get("date") || "").trim();
+  let badges = [];
+  let records = [];
+  let pending = [];       // 送っている途中の追加分（読み込みの結果に消されないよう、重ねて出す）
+  let stale = false;
+  let loadedOnce = false;
+  let loadedAt = "";
+  let gen = 0;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  /* ---------- 読み込み ---------- */
+  async function loadLive() {
+    const my = gen;
+    const live = (editMode && badgeDate) ? await K.fetchLive(badgeDate) : await K.fetchLive();
+    if (my !== gen) return loadLive();
+    session = live.session;
+    records = live.records || [];
+    badges = live.badges || [];
+    if (!badgeDate || !editMode) badgeDate = live.badgeDate;
+    K.writeBadgeCache(badgeDate, badges);
+    pending = pending.filter(p => !badges.some(b => b.id === p.id));
+    stale = false;
+    loadedOnce = true;
+    loadedAt = K.nowHms();
+    if (editMode && !document.getElementById("b-date").value) document.getElementById("b-date").value = badgeDate;
+    render();
+  }
+  function onLiveError() {
+    if (!loadedOnce) {
+      badgeDate = badgeDate || K.todayYmd();
+      badges = K.readBadgeCache(badgeDate);
+      K.sessionsFromLocal();
+      session = (U.sessions || []).find(s => s.date === badgeDate && s.status === "受付中") || null;
+      records = session ? K.recordsFromLocal(session.date, session.event) : [];
+    }
+    stale = true;
+    render();
+  }
+
+  function render() {
+    const head = document.getElementById("when-date");
+    if (!loadedOnce && !stale) {
+      head.textContent = "";
+    } else {
+      const badge = session
+        ? (session.status === "受付中" ? '<span class="when-status open">受付中</span>' : '<span class="when-status closed">締切済み</span>')
+        : "";
+      head.innerHTML = esc(K.jaDate(badgeDate) + (session ? "　" + session.event : "　（受付はまだ始まっていません）")) + badge;
+    }
+    document.getElementById("updated").innerHTML = loadedAt
+      ? `<span class="live-dot${stale ? " ng" : ""}"></span>${stale ? "最後に確認 " : "最新を確認 "}${esc(loadedAt)}`
+      : (stale ? "" : "最新を読み込んでいます…");
+
+    const notice = document.getElementById("notice");
+    notice.hidden = !stale;
+    if (stale) {
+      notice.textContent = loadedOnce
+        ? "最新の読み込みに時間がかかっています。いまは " + loadedAt + " の時点の内容を出しています（自動で読み直しています）。"
+        : "最新の読み込みに時間がかかっています。いまは前回の内容を出しています（自動で読み直しています）。";
+    }
+
+    const box = document.getElementById("list");
+    if (!loadedOnce && !stale) {
+      box.innerHTML = `<p class="bv-empty">最新を読み込んでいます…</p>`;
+      document.getElementById("tally").innerHTML = "";
+      return;
+    }
+    const list = badges.concat(pending.filter(p => p.date === badgeDate));
+    const t = BadgeView.render(box, list, records, {
+      hasSession: !!session,
+      edit: editMode,
+      emptyText: editMode
+        ? "この日にバッジを贈呈する方は、まだ登録されていません。上の欄から追加してください。"
+        : "この日にバッジを贈呈する方は、まだ登録されていません。"
+    });
+    document.getElementById("tally").innerHTML = BadgeView.tallyHtml(t, !!session);
+    if (editMode) wireTools(box);
+  }
+
+  const btnReload = document.getElementById("btn-reload");
+  let poller = null;
+  async function refreshNow() {
+    if (!poller) return;
+    btnReload.disabled = true;
+    btnReload.textContent = "更新中…";
+    try { await poller.now(); }
+    finally { btnReload.disabled = false; btnReload.textContent = "更新"; }
+  }
+  btnReload.addEventListener("click", refreshNow);
+
+  /* ---------- 入力（?edit=1 のときだけ） ---------- */
+  let picked = null;
+  const qEl = document.getElementById("b-q");
+  const sugEl = document.getElementById("b-suggest");
+  let hits = [];
+
+  function joinedText(joined) {
+    const p = String(joined || "").split(/[\/\-]/).map(Number);
+    return p[0] && p[1] ? p[0] + "年" + p[1] + "月入会" : "";
+  }
+  function paintPicked() {
+    const el = document.getElementById("b-picked");
+    if (!picked) {
+      el.innerHTML = qEl.value.trim() ? "名簿にない名前は、そのまま登録できます（受付の氏名と同じ表記にしてください）。" : "";
+      return;
+    }
+    el.innerHTML = `名簿の <b>${esc(picked.name)}</b>（${esc(picked.kana)}）${picked.joined ? "・入会 " + esc(picked.joined) : ""}`;
+  }
+  function placeSuggest() {
+    const rect = qEl.getBoundingClientRect();
+    const vv = window.visualViewport;
+    const vTop = vv ? vv.offsetTop : 0;
+    const vHeight = vv ? vv.height : window.innerHeight;
+    const above = rect.top - vTop;
+    const below = (vTop + vHeight) - rect.bottom;
+    const useAbove = above >= 160 && above > below;
+    sugEl.classList.toggle("above", useAbove);
+    sugEl.classList.toggle("below", !useAbove);
+    sugEl.style.maxHeight = Math.min(280, Math.max(120, (useAbove ? above : below) - 12)) + "px";
+  }
+  function pick(m) {
+    picked = m;
+    qEl.value = m.name;
+    sugEl.hidden = true;
+    const memo = document.getElementById("b-memo");
+    if (!memo.value.trim()) memo.value = joinedText(m.joined);
+    paintPicked();
+  }
+  function wireEntry() {
+    document.getElementById("entry").hidden = false;
+    const dateEl = document.getElementById("b-date");
+    K.bindDateFaces(document.getElementById("entry"));
+    if (badgeDate) dateEl.value = badgeDate;
+    dateEl.addEventListener("change", () => {
+      if (!dateEl.value) return;
+      gen++;
+      badgeDate = dateEl.value;
+      loadedOnce = false;
+      loadedAt = "";
+      badges = [];
+      records = [];
+      session = null;
+      render();
+      refreshNow();
+    });
+
+    qEl.addEventListener("input", () => {
+      picked = null;
+      paintPicked();
+      const q = qEl.value;
+      if (!q.trim()) { sugEl.hidden = true; return; }
+      hits = K.searchMembers(q);
+      if (!hits.length) { sugEl.hidden = true; return; }
+      sugEl.innerHTML = hits.map((m, i) =>
+        `<div class="item" data-i="${i}"><span class="nm">${esc(m.name)}</span><span class="kn">${esc(m.kana)}${m.joined ? "・" + esc(m.joined) + " 入会" : ""}</span></div>`
+      ).join("");
+      placeSuggest();
+      sugEl.hidden = false;
+    });
+    sugEl.addEventListener("mousedown", e => {
+      const el = e.target.closest(".item");
+      if (!el) return;
+      e.preventDefault();
+      const m = hits[Number(el.dataset.i)];
+      if (m) pick(m);
+    });
+    qEl.addEventListener("blur", () => setTimeout(() => { sugEl.hidden = true; }, 150));
+
+    document.getElementById("b-add").addEventListener("click", async () => {
+      const btn = document.getElementById("b-add");
+      const date = dateEl.value;
+      const name = (picked ? picked.name : qEl.value).trim();
+      const memo = document.getElementById("b-memo").value.trim();
+      if (!date) { alert("贈呈する日を選んでください。"); return; }
+      if (!name) { alert("お名前を入れてください。"); return; }
+      const all = badges.concat(pending);
+      const dup = all.find(b => b.date === date && K.findMemberRecord([{ type: "member", memberId: b.memberId, name: b.name }],
+        { memberId: picked ? picked.id : "", name }));
+      if (dup && !confirm(name + " さんは、この日にすでに登録されています。もう1件追加しますか？")) return;
+      const badge = {
+        id: K.uid(), date, memberId: picked ? picked.id : "", name,
+        kana: picked ? picked.kana : "", memo, _pending: "保存しています…"
+      };
+      pending.push(badge);
+      render();
+      btn.disabled = true;
+      btn.textContent = "保存しています…";
+      try {
+        const clean = Object.assign({}, badge);
+        delete clean._pending;
+        await K.saveBadge(clean);
+        badge._pending = "";
+        picked = null;
+        qEl.value = "";
+        document.getElementById("b-memo").value = "";
+        paintPicked();
+        qEl.focus();
+        await refreshNow();
+      } catch (e) {
+        pending = pending.filter(p => p !== badge);
+        render();
+        alert("保存できませんでした。もう一度「追加する」を押してください。\n\n" + (e.message || ""));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "追加する";
+      }
+    });
+  }
+
+  function wireTools(box) {
+    box.querySelectorAll("[data-badge-memo]").forEach(b => {
+      b.addEventListener("click", async () => {
+        const item = badges.find(x => x.id === b.dataset.badgeMemo);
+        if (!item) return;
+        const memo = prompt(item.name + " さんのメモ", item.memo || "");
+        if (memo == null) return;
+        b.disabled = true;
+        try {
+          await K.saveBadge({ id: item.id, date: item.date, memberId: item.memberId, name: item.name, kana: item.kana, memo: memo.trim() });
+          item.memo = memo.trim();
+          render();
+          await refreshNow();
+        } catch (e) {
+          alert("保存できませんでした。もう一度お試しください。\n\n" + (e.message || ""));
+          b.disabled = false;
+        }
+      });
+    });
+    box.querySelectorAll("[data-badge-del]").forEach(b => {
+      b.addEventListener("click", async () => {
+        const item = badges.find(x => x.id === b.dataset.badgeDel);
+        if (!item) return;
+        if (!confirm(item.name + " さんのバッジ贈呈を取り消しますか？")) return;
+        b.disabled = true;
+        try {
+          await K.deleteBadge(item.id);
+          badges = badges.filter(x => x.id !== item.id);
+          render();
+          await refreshNow();
+        } catch (e) {
+          alert("取り消せませんでした。もう一度お試しください。\n\n" + (e.message || ""));
+          b.disabled = false;
+        }
+      });
+    });
+  }
+
+  if (editMode) wireEntry();
+  render();
+  poller = K.startLivePolling({ load: loadLive, onError: onLiveError });
+})();
+</script>
+</body>
+</html>

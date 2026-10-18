@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0f2f4f">
+<title>ゲスト情報 | 大阪みなと倫理法人会</title>
+<link rel="stylesheet" href="style.css?v=20261006a">
+<style>
+  /* ============================================================
+     ゲスト情報（役員がゲストのことを知るページ）
+
+     受付を開いているかどうかに関係なく、年 → 週 で選んで見る。
+     過去の回も、1〜2週間先の申込も同じ形で見られる。
+     来場したかどうかは印（バッジ）で分かるようにし、カードはグレーにしない（読みにくくなるので）。
+     電話・メール・フォローメモは出さない（スプレッドシートで見る）。
+     ============================================================ */
+  body{background:var(--bg)}
+  .wrap{max-width:900px; margin:0 auto; padding:12px 14px 60px}
+  .topbar{padding:12px 20px 14px}
+  .topbar h1{font-size:1.1rem}
+
+  /* ---- 年のタブ ---- */
+  .years{display:flex; align-items:center; gap:6px; margin:2px 2px 10px}
+  .years button{
+    border:1px solid var(--line); background:#fff; color:var(--sub); border-radius:999px;
+    padding:6px 14px; font-size:.86rem; font-weight:800; cursor:pointer;
+  }
+  .years button[aria-pressed="true"]{background:var(--navy); border-color:var(--navy); color:#fff}
+  .years .sp{flex:1}
+  .years .upd{font-size:.72rem; color:var(--sub); white-space:nowrap}
+
+  /* ---- 週のタブ（その年の火曜を全部、横に並べる） ---- */
+  .weeks-box{background:#fff; border:1px solid #eaeef4; border-radius:14px; padding:8px 6px; margin-bottom:12px;
+    box-shadow:0 4px 14px rgba(20,45,80,.05); display:flex; align-items:center; gap:4px}
+  .weeks-nav{flex:none; border:0; background:none; font-size:1.2rem; color:var(--navy); width:30px; height:44px; cursor:pointer; border-radius:8px}
+  .weeks-nav:disabled{color:#d3d8e0; cursor:default}
+  .weeks{flex:1; display:flex; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; padding:2px}
+  .weeks::-webkit-scrollbar{display:none}
+  .month{flex:none; align-self:stretch; display:flex; align-items:center; padding:0 4px 0 8px;
+    font-size:.7rem; font-weight:800; color:var(--gold); letter-spacing:.04em; border-left:1px solid var(--line)}
+  .month:first-child{border-left:0; padding-left:2px}
+  .wk{
+    flex:none; position:relative; min-width:52px; border:1px solid transparent; background:#f6f8fb; border-radius:10px;
+    padding:6px 6px 5px; text-align:center; cursor:pointer; color:var(--ink); font-family:inherit;
+  }
+  .wk .d{display:block; font-size:.86rem; font-weight:800; line-height:1.2}
+  .wk .c{display:block; font-size:.66rem; font-weight:800; color:#b0b7c2; margin-top:2px; line-height:1.2; white-space:nowrap}
+  .wk.has .c{color:var(--ok)}
+  .wk.past{background:#fafbfc}
+  .wk.past .d{color:#8a93a3}
+  .wk.today{border-color:var(--gold)}
+  .wk.off .d{text-decoration:line-through; text-decoration-color:#c9a3b0}
+  .wk.off .c{color:#a8375a}
+  .wk[aria-pressed="true"]{background:var(--navy); border-color:var(--navy)}
+  .wk[aria-pressed="true"] .d{color:#fff; text-decoration-color:#ffd9e4}
+  .wk[aria-pressed="true"] .c{color:#cfe0f2}
+  .week-tools{display:flex; justify-content:flex-end; gap:12px; margin:-6px 4px 10px; font-size:.76rem}
+
+  /* ---- 選んだ週の回 ---- */
+  .session{margin-bottom:18px}
+  .s-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin:4px 2px 8px}
+  .s-head h2{margin:0; font-size:1.02rem}
+  .st-tag{display:inline-block; font-size:.68rem; font-weight:800; border-radius:999px; padding:2px 9px; letter-spacing:.03em}
+  .st-tag.open{background:#eef6f0; color:var(--ok)}
+  .st-tag.closed{background:#eef1f6; color:var(--sub)}
+  .st-tag.future{background:#eaf2fb; color:var(--navy-2, #16436c)}
+  .st-tag.off{background:#fdf0f3; color:#a8375a}
+  .s-count{font-size:.78rem; color:var(--sub)}
+  .s-count b{color:var(--ink)}
+  .s-note{margin:0 2px 8px; font-size:.76rem; color:#a8375a; font-weight:700}
+
+  /* ---- 1人＝1枚のカード（グレーにはしない） ---- */
+  .g-card{background:#fff; border:1px solid #e6ebf2; border-radius:14px; padding:14px 16px; margin-bottom:10px;
+    box-shadow:0 4px 14px rgba(20,45,80,.05)}
+  .g-card.arrived{border-left:6px solid var(--ok)}
+  .g-card.planned{border-left:6px solid #9fbfe0}
+  .g-card.absent{border-left:6px solid #e3c88f}
+  .g-top{display:flex; align-items:flex-start; gap:10px}
+  .g-name{flex:1; min-width:0}
+  .g-photo{flex:none; width:76px; height:76px; padding:0; border:1px solid var(--line); border-radius:12px; overflow:hidden;
+    background:#f1f3f7; cursor:zoom-in}
+  .g-photo img{display:block; width:100%; height:100%; object-fit:cover; object-position:center 20%}
+  .g-photo img:not([src]){visibility:hidden}
+  .lightbox{position:fixed; inset:0; z-index:50; background:rgba(10,20,35,.86); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:10px; padding:20px; cursor:zoom-out}
+  .lightbox[hidden]{display:none}
+  .lightbox img{max-width:100%; max-height:80vh; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.4)}
+  .lightbox p{margin:0; color:#cfd6e0; font-size:.76rem}
+  .g-name .nm{font-size:1.32rem; font-weight:800; line-height:1.3; word-break:break-word}
+  .g-name .kn{display:block; font-size:.86rem; color:#5d6875; margin-top:2px}
+  .g-badges{display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex:none}
+  .pill{display:inline-block; white-space:nowrap; border-radius:999px; font-weight:800; font-size:.76rem; padding:4px 11px}
+  .pill.arrived{background:var(--ok); color:#fff}
+  .pill.planned{background:#eaf2fb; color:#16436c}
+  .pill.absent{background:#fbf3e2; color:#8a6620}
+  .pill.visit{background:#fff7e0; color:#8a6620; font-size:.7rem; padding:2px 9px}
+  .pill.first{background:#f1f3f7; color:var(--sub); font-size:.7rem; padding:2px 9px}
+  /* 入会の段階。来場の印（右上）とは別に、名前の上に出す */
+  .join{display:inline-block; width:max-content; border-radius:6px; font-weight:800; font-size:.74rem; padding:2px 9px;
+    margin-bottom:5px; letter-spacing:.04em; border:1px solid}
+  .g-name .join{display:block}
+  .join.j1{background:#fff8e6; color:#8a6620; border-color:#ecd59a}
+  .join.j2{background:#fdf0e4; color:#a55a12; border-color:#f0c79c}
+  .join.j3{background:linear-gradient(135deg,#c8a24a,#a9842f); color:#fff; border-color:#a9842f}
+  .join.sm{font-size:.66rem; padding:1px 7px; margin:0}
+  .g-ref{margin-top:8px; font-size:1rem; font-weight:700}
+  .g-ref .k{font-size:.72rem; font-weight:800; color:var(--sub); margin-right:6px; letter-spacing:.04em}
+  .g-info{display:grid; grid-template-columns:auto minmax(0,1fr); gap:4px 12px; margin:10px 0 0; font-size:.84rem; line-height:1.6}
+  .g-info dt{color:var(--sub); font-weight:800; font-size:.74rem; padding-top:2px; white-space:nowrap}
+  .g-info dd{margin:0; word-break:break-word; white-space:pre-line}
+  .steps{display:flex; gap:5px; flex-wrap:wrap; list-style:none; margin:10px 0 0; padding:0}
+  .steps li{font-size:.68rem; font-weight:700; border-radius:999px; padding:2px 8px; background:#f1f3f7; color:#b6bcc6; border:1px solid #eceff5}
+  .steps li.on{background:#e4f2ea; color:var(--ok); border-color:#c3ded0}
+  .follow{margin-top:10px; padding-top:8px; border-top:1px dashed var(--line); font-size:.74rem; color:var(--sub)}
+  .follow b{color:var(--ink)}
+  @media(min-width:760px){
+    .cards{display:grid; grid-template-columns:1fr 1fr; gap:0 12px}
+  }
+
+  .empty-msg{background:#fff; border:1px solid #eaeef4; border-radius:14px; padding:22px 16px; text-align:center;
+    color:var(--sub); font-size:.86rem; line-height:1.7}
+  .notice{border:1px solid #e8d5a8; background:#fffaf0; color:#7a6224; border-radius:10px; padding:9px 12px;
+    font-size:.78rem; line-height:1.6; margin-bottom:12px}
+  .notice.info{border-color:#d6dde8; background:#f6f8fb; color:#4a5566}
+  .foot-note{margin:16px 2px 0; font-size:.72rem; color:#a6adb8; line-height:1.7}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>ゲスト情報</h1>
+</header>
+<script src="../portal-nav.js?v=20261018a" data-section="uketsuke" data-tab="guests"></script>
+
+<div class="wrap">
+  <div class="years" id="years"></div>
+  <div class="weeks-box">
+    <button type="button" class="weeks-nav" id="prev" aria-label="前の週">‹</button>
+    <div class="weeks" id="weeks"></div>
+    <button type="button" class="weeks-nav" id="next" aria-label="次の週">›</button>
+  </div>
+  <div class="week-tools">
+    <button type="button" class="linklike" id="btn-now">次のMSにもどる</button>
+    <button type="button" class="linklike" id="btn-reload">更新</button>
+  </div>
+
+  <div class="notice" id="notice" hidden></div>
+  <div id="body"><p class="empty-msg">読み込んでいます…</p></div>
+  <div class="lightbox" id="lightbox" hidden><img id="lightbox-img" alt=""><p>どこかを押すと閉じます</p></div>
+
+  <p class="foot-note">
+    見るだけのページです。来場は受付で丸を付けると「来場」に変わります。ステータス・担当者はゲスト名簿（スプレッドシート）で直します。<br>
+    名前の上の「入会済み」「入会手続き中」「入会予定」は、会員名簿の在籍状況（在籍・入会手続き中・仮）か、ゲスト名簿のステータスから出しています（今日時点の状態）。<br>
+    ゲストの個人情報が含まれます。URL を会員以外に共有しないでください。
+  </p>
+</div>
+
+<script src="config.js?v=20261011a"></script>
+<script src="app.js?v=20261007a"></script>
+<script>
+(function () {
+  "use strict";
+  const K = window.UKETSUKE;
+  const C = UKETSUKE_CONFIG;
+  const $ = id => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const today = K.todayYmd();
+
+  let year = /^\d{4}$/.test(params.get("year") || "") ? params.get("year")
+    : /^\d{4}-\d{2}-\d{2}$/.test(params.get("date") || "") ? params.get("date").slice(0, 4) : today.slice(0, 4);
+  let week = "";            // 選んでいる週の火曜（yyyy-mm-dd）
+  let weekGuessed = false;  // 読み込み前に仮で選んだ週（読み込めたら選び直す）
+  let scrolled = false;
+  let wantDate = params.get("date") || "";
+  let data = null;          // サーバーの guestBoard の結果
+  let loadedAt = "";
+  let stale = false;
+  let loading = true;
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  const pad = n => String(n).padStart(2, "0");
+  const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const parse = s => { const p = s.split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); };
+  /* その日を含む週（月〜日）の火曜 */
+  function tuesdayOf(s) {
+    const d = parse(s);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 1);
+    return ymd(d);
+  }
+  function tuesdaysOf(y) {
+    const out = [];
+    const d = new Date(Number(y), 0, 1);
+    while (d.getDay() !== 2) d.setDate(d.getDate() + 1);
+    for (; d.getFullYear() === Number(y); d.setDate(d.getDate() + 7)) out.push(ymd(d));
+    return out;
+  }
+  function weekDays(tue) {
+    const mon = parse(tue); mon.setDate(mon.getDate() - 1);
+    return Array.from({ length: 7 }, (_, i) => { const d = new Date(mon); d.setDate(mon.getDate() + i); return ymd(d); });
+  }
+
+  /* ---------- 読み込み ---------- */
+  async function load(fresh) {
+    const q = new URLSearchParams({ action: "guestBoard", year, key: K.currentKey(), _: Date.now() });
+    if (fresh) q.set("fresh", "1");
+    loading = true;
+    if (!loadedAt) render();
+    const res = await fetch(C.api.endpoint + "?" + q);
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || "読み込めませんでした");
+    data = j;
+    stale = false;
+    loading = false;
+    loadedAt = K.nowHm();
+    try { localStorage.setItem("uketsuke.guestBoard." + year, JSON.stringify(j)); } catch (e) { /* ignore */ }
+    render();
+  }
+  function onError() {
+    if (!data) {
+      try { data = JSON.parse(localStorage.getItem("uketsuke.guestBoard." + year) || "null"); } catch (e) { data = null; }
+    }
+    stale = true;
+    loading = false;
+    render();
+  }
+
+  /* ---------- 週ごとのまとめ ---------- */
+  function weekInfo(tue) {
+    const days = weekDays(tue);
+    const guests = data ? data.guests.filter(g => days.includes(g.date)) : [];
+    const msEv = data ? data.events.find(e => e.date === tue && e.kind === "MS") : null;
+    let off = "";
+    if (msEv && msEv.state === "休会") off = "休会";
+    else if (!msEv || msEv.state !== "開催") {
+      const h = data && data.holidays ? data.holidays[tue] : "";
+      if (h) off = "祝日（" + h + "）のため休会の可能性";
+      else if (Number(tue.slice(8)) >= 29) off = "第5火曜のため休会の可能性";
+    }
+    return { guests, off, offShort: off === "休会" ? "休会" : off ? "休?" : "" };
+  }
+  function defaultWeek() {
+    if (wantDate && wantDate.slice(0, 4) === year) return tuesdayOf(wantDate);
+    const tues = tuesdaysOf(year);
+    if (year === today.slice(0, 4)) {
+      const datesAhead = (data ? data.guests.map(g => g.date) : []).filter(d => d >= today).sort();
+      const nextTue = tues.find(t => t >= today) || tues[tues.length - 1];
+      const nextGuest = datesAhead.length ? tuesdayOf(datesAhead[0]) : "";
+      return nextGuest && nextGuest < nextTue ? nextGuest : nextTue;
+    }
+    const withGuests = tues.filter(t => weekInfo(t).guests.length);
+    return withGuests.length ? withGuests[withGuests.length - 1] : tues[0];
+  }
+
+  /* ---------- 描画 ---------- */
+  function renderYears() {
+    const years = (data && data.years && data.years.length ? data.years : [year]).slice();
+    if (!years.includes(year)) years.push(year);
+    years.sort();
+    $("years").innerHTML = years.map(y =>
+      `<button type="button" data-y="${y}" aria-pressed="${y === year}">${y}年</button>`).join("") +
+      `<span class="sp"></span><span class="upd">${loadedAt ? `<span class="live-dot${stale ? " ng" : ""}"></span>${stale ? "最後に確認 " : "最新 "}${esc(loadedAt)}` : ""}</span>`;
+  }
+  function renderWeeks() {
+    const tues = tuesdaysOf(year);
+    const nextTue = tuesdaysOf(today.slice(0, 4)).concat(tuesdaysOf(Number(today.slice(0, 4)) + 1)).find(t => t >= today);
+    let html = "", lastMonth = 0;
+    tues.forEach(t => {
+      const m = Number(t.slice(5, 7));
+      if (m !== lastMonth) { html += `<span class="month">${m}月</span>`; lastMonth = m; }
+      const w = weekInfo(t);
+      const n = w.guests.length;
+      const cls = ["wk", n ? "has" : "", t < today ? "past" : "", t === nextTue ? "today" : "", w.off && !n ? "off" : ""].join(" ");
+      html += `<button type="button" class="${cls}" data-w="${t}" aria-pressed="${t === week}" title="${esc(w.off)}">
+        <span class="d">${Number(t.slice(8))}日</span><span class="c">${n ? n + "名" : (w.offShort || "—")}</span></button>`;
+    });
+    $("weeks").innerHTML = html;
+    const i = tues.indexOf(week);
+    $("prev").disabled = i <= 0;
+    $("next").disabled = i < 0 || i >= tues.length - 1;
+    const el = $("weeks").querySelector(`[data-w="${week}"]`);
+    if (el) {
+      const box = $("weeks");
+      const b = box.getBoundingClientRect(), r = el.getBoundingClientRect();
+      box.scrollTo({ left: box.scrollLeft + r.left - b.left - (b.width - r.width) / 2, behavior: scrolled ? "smooth" : "auto" });
+      scrolled = true;
+    }
+  }
+
+  function work(g) {
+    const ct = [g.company, g.title].filter(Boolean).join(" ");
+    return ct && g.industry ? `${ct}（${g.industry}）` : ct || g.industry;
+  }
+  /* 入会の段階。会員名簿の在籍状況（在籍＝入会済み・仮＝入会予定・入会手続き中）と、
+     ゲスト名簿のステータス（入会・〜／入会手続き中／入会予定）の、進んでいるほうを出す。
+     いまの状態なので、過去の回のカードにも今日時点の段階が出る。 */
+  const JOIN_STEPS = ["入会予定", "入会手続き中", "入会済み"];
+  function joinStep(g) {
+    const m = String(g.meibo || "").match(/（([^・）]+)(・ふりがなで一致)?）/);
+    const fromMeibo = !m ? "" : m[1] === "在籍" ? "入会済み" : m[1] === "仮" ? "入会予定" : m[1] === "入会手続き中" ? "入会手続き中" : "";
+    const st = String(g.status || "");
+    const fromStatus = /^入会[・済]/.test(st) || st === "入会" ? "入会済み" : st === "入会手続き中" ? "入会手続き中" : st === "入会予定" ? "入会予定" : "";
+    const step = JOIN_STEPS.indexOf(fromMeibo) > JOIN_STEPS.indexOf(fromStatus) ? fromMeibo : fromStatus;
+    return { step, byKana: !!(m && m[2]) && step === fromMeibo, retired: !!m && m[1] === "退会" };
+  }
+  const JOIN_CLASS = { "入会予定": "j1", "入会手続き中": "j2", "入会済み": "j3" };
+
+  function cardHtml(g, closed) {
+    const arrived = g.chourei || g.ms || g.share;
+    const join = joinStep(g);
+    const state = arrived ? "arrived" : g.date >= today && !closed ? "planned" : "absent";
+    const stateText = { arrived: "来場", planned: "来場予定", absent: "来場なし" }[state];
+    const visit = g.msBefore > 0 ? `<span class="pill visit">みなと${g.msBefore + 1}回目</span>`
+      : g.experience === "初めて" ? `<span class="pill first">倫理法人会は初めて</span>`
+      : g.experience === "以前に参加したことがある" ? `<span class="pill first">倫理法人会に参加経験あり</span>`
+      : g.experience === "別の単会に入っていたことがある" ? `<span class="pill first">他単会に所属経験あり</span>` : "";
+    const plan = String(g.plan || "").split("・").filter(p => p && p !== "モーニングセミナー");
+    const rows = [
+      ["アテンド", K.formatAttendants(g.attendant)],
+      ["仕事", work(g)],
+      ["年齢", g.age],
+      ["住居", g.area],
+      ["性格・印象", g.character],
+      ["倫理法人会への関心", g.interestLevel],
+      ["興味・関心", g.interest],
+      ["参加予定", !arrived && g.plan ? (plan.length ? "モーニングセミナー＋" + plan.join("・") : "モーニングセミナーのみ") : ""],
+      ["特記", (g.notes || []).join("\n")],
+      ["アテンドのメモ", g.attendNote],
+      ["会員名簿", join.byKana ? "ふりがなだけで一致した方です（同じ方か確かめてください）" : join.retired ? "退会された方です" : ""]
+    ].filter(r => r[1]);
+    const steps = arrived && g.event === K.DEFAULT_EVENT
+      ? `<ul class="steps">${K.msAttendance().map(a => `<li class="${g[a.key] ? "on" : ""}">${esc(a.label)}</li>`).join("")}</ul>` : "";
+    /* 入会の印が付く方は、ステータス（検討中など）が追いついていないことが多く、印と食い違うので出さない */
+    const status = g.status === "来場予定" || join.step ? "" : g.status;
+    const follow = status || g.owner
+      ? `<div class="follow">${status ? `フォロー状況 <b>${esc(status)}</b>` : ""}${status && g.owner ? "　" : ""}${g.owner ? `担当 <b>${esc(g.owner)}</b>` : ""}</div>` : "";
+    return `<article class="g-card ${state}">
+      <div class="g-top">
+        ${g.photo ? `<button type="button" class="g-photo" data-photo="${esc(g.guestId)}" aria-label="${esc(g.name)}さんの写真を大きく見る"><img alt=""${photoCache[g.guestId] ? ` src="${photoCache[g.guestId]}"` : ""}></button>` : ""}
+        <div class="g-name">${join.step ? `<span class="join ${JOIN_CLASS[join.step]}">${esc(join.step)}</span>` : ""}<span class="nm">${esc(g.name)}</span>${g.kana ? `<span class="kn">${esc(g.kana)}</span>` : ""}</div>
+        <div class="g-badges"><span class="pill ${state}">${stateText}</span>${visit}</div>
+      </div>
+      <div class="g-ref"><span class="k">紹介者</span>${esc(g.referrer || "—")}</div>
+      ${rows.length ? `<dl class="g-info">${rows.map(r => `<dt>${esc(r[0])}</dt><dd>${esc(r[1])}</dd>`).join("")}</dl>` : ""}
+      ${steps}${follow}
+    </article>`;
+  }
+
+  function renderBody() {
+    const box = $("body");
+    const fromCache = data && !loadedAt;
+    const notice = loading && fromCache ? "最新を読み込んでいます…　いまは前回の内容を出しています。"
+      : stale && data ? "最新の読み込みに時間がかかっています。いまは" + (loadedAt ? " " + loadedAt + " の時点" : "前回") + "の内容を出しています（自動で読み直しています）。"
+      : "";
+    $("notice").hidden = !notice;
+    $("notice").textContent = notice;
+    $("notice").classList.toggle("info", loading);
+    if (!data) { box.innerHTML = `<p class="empty-msg">${stale ? "最新の読み込みに時間がかかっています。<br>自動で読み直していますので、少しお待ちください。" : "読み込んでいます…"}</p>`; return; }
+    const w = weekInfo(week);
+    const groups = {};
+    w.guests.forEach(g => { const k = g.date + "\u001f" + g.event; (groups[k] = groups[k] || []).push(g); });
+    const keys = Object.keys(groups).sort();
+    if (!keys.some(k => k.startsWith(week))) keys.unshift(week + "\u001f" + K.DEFAULT_EVENT);
+    keys.sort();
+    box.innerHTML = keys.map(k => {
+      const [date, ev] = k.split("\u001f");
+      const list = (groups[k] || []).slice().sort((a, b) => (a.ms === b.ms ? 0 : a.ms ? -1 : 1) || a.name.localeCompare(b.name, "ja"));
+      const evInfo = data.events.find(e => e.date === date && e.name === ev);
+      const closed = !!(evInfo && evInfo.status === "締切済み");
+      const tag = evInfo && evInfo.state === "休会" ? `<span class="st-tag off">休会</span>`
+        : evInfo && evInfo.status === "受付中" ? `<span class="st-tag open">受付中</span>`
+        : date < today || closed ? `<span class="st-tag closed">終わった回</span>`
+        : `<span class="st-tag future">これから</span>`;
+      const arrivedN = list.filter(g => g.chourei || g.ms || g.share).length;
+      const joins = JOIN_STEPS.slice().reverse()
+        .map(s => [s, list.filter(g => joinStep(g).step === s).length]).filter(x => x[1])
+        .map(x => `<span class="join ${JOIN_CLASS[x[0]]} sm">${esc(x[0])} ${x[1]}名</span>`).join("");
+      const count = list.length
+        ? `<span class="s-count">ゲスト <b>${list.length}名</b>${arrivedN ? `（来場 ${arrivedN}名）` : ""}</span>${joins}` : "";
+      const note = date === week && w.off && w.off !== "休会" ? `<p class="s-note">${esc(w.off)}があります</p>` : "";
+      return `<section class="session">
+        <div class="s-head"><h2>${esc(K.jaDate(date))}　${esc(ev)}</h2>${tag}${count}</div>
+        ${note}
+        ${list.length ? `<div class="cards">${list.map(g => cardHtml(g, closed)).join("")}</div>`
+          : `<p class="empty-msg">この回のゲストは、まだ入っていません。<br>紹介者用フォームや受付で入れると、ここに出ます。</p>`}
+      </section>`;
+    }).join("");
+  }
+
+  /* 顔写真は重いので、ゲスト情報とは別に、いま出ているカードの分だけ読む */
+  const photoCache = {};
+  let photoLoading = false;
+  async function loadPhotos() {
+    const want = [...document.querySelectorAll(".g-photo[data-photo]")].map(b => b.dataset.photo)
+      .filter((id, i, all) => id && !(id in photoCache) && all.indexOf(id) === i);
+    if (!want.length || photoLoading) return;
+    photoLoading = true;
+    let ok = false;
+    try {
+      const q = new URLSearchParams({ action: "guestPhotos", ids: want.join(","), key: K.currentKey(), _: Date.now() });
+      const j = await (await fetch(C.api.endpoint + "?" + q)).json();
+      if (j.ok) {
+        ok = true;
+        want.forEach(id => { photoCache[id] = (j.photos || {})[id] || ""; });
+      }
+    } catch (e) { /* 写真が読めなくても名前などは出ている。次に描き直したときにまた読む */ }
+    finally { photoLoading = false; }
+    document.querySelectorAll(".g-photo[data-photo]").forEach(b => {
+      const src = photoCache[b.dataset.photo];
+      if (src) b.querySelector("img").src = src;
+      else if (b.dataset.photo in photoCache) b.remove();
+    });
+    if (ok) loadPhotos();
+  }
+  $("body").addEventListener("click", e => {
+    const b = e.target.closest(".g-photo");
+    if (!b || !photoCache[b.dataset.photo]) return;
+    $("lightbox-img").src = photoCache[b.dataset.photo];
+    $("lightbox").hidden = false;
+  });
+  $("lightbox").addEventListener("click", () => { $("lightbox").hidden = true; });
+
+  function render() {
+    if (data && (!week || weekGuessed)) { week = defaultWeek(); weekGuessed = false; }
+    if (!week) { week = defaultWeek(); weekGuessed = true; }
+    renderYears();
+    renderWeeks();
+    renderBody();
+    loadPhotos();
+  }
+
+  /* ---------- 操作 ---------- */
+  function setUrl() {
+    try { history.replaceState(null, "", location.pathname + "?date=" + week); } catch (e) { /* ignore */ }
+  }
+  $("weeks").addEventListener("click", e => {
+    const b = e.target.closest("[data-w]");
+    if (!b) return;
+    week = b.dataset.w; setUrl(); render();
+  });
+  $("prev").addEventListener("click", () => { const t = tuesdaysOf(year); week = t[Math.max(0, t.indexOf(week) - 1)]; setUrl(); render(); });
+  $("next").addEventListener("click", () => { const t = tuesdaysOf(year); week = t[Math.min(t.length - 1, t.indexOf(week) + 1)]; setUrl(); render(); });
+  $("years").addEventListener("click", e => {
+    const b = e.target.closest("[data-y]");
+    if (!b || b.dataset.y === year) return;
+    year = b.dataset.y; week = ""; wantDate = ""; data = null; loadedAt = "";
+    render();
+    poller.now();
+  });
+  $("btn-now").addEventListener("click", () => {
+    wantDate = "";
+    if (year !== today.slice(0, 4)) { year = today.slice(0, 4); data = null; week = ""; render(); poller.now(); return; }
+    week = defaultWeek(); setUrl(); render();
+  });
+  $("btn-reload").addEventListener("click", async () => {
+    const b = $("btn-reload");
+    b.textContent = "更新中…";
+    try { await load(true); } catch (e) { onError(); } finally { b.textContent = "更新"; }
+  });
+
+  try { data = JSON.parse(localStorage.getItem("uketsuke.guestBoard." + year) || "null"); } catch (e) { data = null; }
+  render();
+  const poller = K.startLivePolling({ load: () => load(false), onError });
+})();
+</script>
+</body>
+</html>
