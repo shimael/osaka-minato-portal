@@ -16,10 +16,15 @@
      名前が入っていない席は薄いグレーにして目立たせない。
      ============================================================ */
   body{background:var(--bg)}
-  .wrap{max-width:1500px; margin:0 auto; padding:12px 14px 60px}
+  /* 大きい画面で広がりすぎないよう、ページの幅は 1280px までにする。
+     編集画面は左のゲスト一覧（280px＋すき間）のぶんだけ広げ、席図の大きさは見る用と同じにする */
+  .wrap{max-width:1280px; margin:0 auto; padding:12px 14px 60px}
+  body.edit .wrap{max-width:1574px}
+  body.edit.pool-off .wrap{max-width:1280px}
   .topbar{padding:12px 20px 14px}
   .topbar h1{font-size:1.1rem}
   body:not(.edit) .edit-only{display:none !important}
+  body.edit .view-only{display:none !important}
 
   /* ---- 上の操作 ---- */
   .bar{display:flex; flex-wrap:wrap; align-items:center; gap:10px; background:#fff; border:1px solid #e6ebf2; border-radius:14px;
@@ -68,11 +73,6 @@
   .ptag.ok{background:#e4f2ea; color:#2f6f4e}
   .ptag.pink{background:#fff0f7; color:#a33a74}
   .ptag.gold{background:#fff6e0; color:#8a6620}
-  .p-gear{display:flex; flex-wrap:wrap; gap:8px 16px; margin:2px 0 10px; font-size:.9rem; font-weight:800}
-  .p-gear span{display:inline-flex; align-items:center; gap:6px}
-  .p-gear .on{color:#a32a1c}
-  .p-gear .off{color:#6b7686; font-weight:700}
-  .p-gear b{font-size:.78rem; color:var(--sub); font-weight:800}
   .p-people{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:8px}
   .p-card{border:1px solid #ead6e4; background:#fffafd; border-radius:12px; padding:9px 12px}
   .p-card.speech{border-color:#d6e4d8; background:#f6fbf7}
@@ -89,7 +89,10 @@
   /* ---- 本体：左にゲスト、右に席図 ---- */
   .main{display:grid; grid-template-columns:minmax(0,1fr); gap:14px; align-items:start}
   .main > *{min-width:0}
-  body.edit .main{grid-template-columns:330px minmax(0,1fr)}
+  body.edit .main{grid-template-columns:280px minmax(0,1fr)}
+  /* ゲスト一覧をしまうと、席図を横いっぱいに使える（席を押せば名前は選べる） */
+  body.edit.pool-off .main{grid-template-columns:minmax(0,1fr)}
+  body.edit.pool-off .pool{display:none}
   @media(max-width:980px){ body.edit .main{grid-template-columns:minmax(0,1fr)} }
 
   .pool{background:#fff; border:1px solid #e6ebf2; border-radius:14px; padding:10px; box-shadow:0 4px 14px rgba(20,45,80,.05);
@@ -134,34 +137,58 @@
   .chip.c-mc,.chip.c-yaku{border-color:#b9861b} .chip.c-mc .c-role,.chip.c-yaku .c-role{background:#b9861b}
   .chip.c-member{border-color:#8a96a8} .chip.c-member .c-role{background:#8a96a8}
   .chip.c-guest{border-color:#2f86d6; background:#e3f1ff} .chip.c-guest .c-role{background:#2f86d6}
+  .chip .c-del{margin-left:2px; font-size:.66rem; font-weight:800; color:#a32a1c; text-decoration:underline}
 
   /* ---- 席図 ---- */
   .board-box{background:#fff; border:1px solid #e6ebf2; border-radius:14px; padding:12px; box-shadow:0 4px 14px rgba(20,45,80,.05); overflow-x:auto}
   .board-min{min-width:720px}
-  .board{position:relative; width:100%; container-type:inline-size; user-select:none; -webkit-user-select:none}
-  .board .front{position:absolute; left:0; right:0; top:0; height:3.3%; background:var(--navy); color:#fff; border-radius:8px;
-    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1.7cqw; letter-spacing:.2em}
+  /* 文字の大きさは席図の方眼の単位（--u）で決める。画像（haiseki-image.js）と同じ数字にしてある */
+  .board{position:relative; width:100%; container-type:inline-size; user-select:none; -webkit-user-select:none; --u:calc(100cqw / var(--w, 1300))}
+  .board .front{position:absolute; left:0; right:0; top:0; height:calc(var(--u) * 44); background:var(--navy); color:#fff; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:calc(var(--u) * 22); letter-spacing:.2em}
   .table{position:absolute; border-radius:50%; background:#eef1f6; border:2px solid #c3cbd7; display:flex; flex-direction:column;
     align-items:center; justify-content:center; color:#8a96a8; line-height:1.15; text-align:center}
-  .table b{font-size:3.1cqw}
-  .table em{font-style:normal; font-size:1.25cqw; font-weight:800}
-  .table span{font-size:1.05cqw; font-weight:800; color:#2f6f4e}
+  .table b{font-size:calc(var(--u) * 44)}
+  .table em{font-style:normal; font-size:calc(var(--u) * 16); font-weight:800}
+  .table span{display:block; font-size:calc(var(--u) * 14); font-weight:800; color:#2f6f4e}
+  .tbl-n{position:absolute; z-index:3; transform:translate(-50%,0); border:0; background:#0f2f4f; color:#fff;
+    border-radius:999px; padding:4px 10px; font-weight:800; font-size:calc(var(--u) * 13); cursor:pointer;
+    font-family:inherit; white-space:nowrap; box-shadow:0 2px 8px rgba(15,47,79,.22)}
+  .tbl-n.on{background:#c2410c}
   .seat{position:absolute; box-sizing:border-box; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; line-height:1.2; padding:2px 4px; overflow:hidden; background:#fff; border:2px solid #8a96a8}
+    text-align:center; line-height:1.15; padding:calc(var(--u) * 21) calc(var(--u) * 6) calc(var(--u) * 4); overflow:hidden; background:#fff; border:2px solid #8a96a8}
   body.edit .seat{cursor:pointer}
   body.edit .seat[data-drag]{cursor:grab}
-  .seat .s-top{font-size:1.1cqw; font-weight:700; color:#3c6a96; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
-  .seat .s-name{font-size:2.05cqw; font-weight:800; color:#16202e; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
-  .seat .s-name small{font-size:.62em; margin-left:1px}
-  .seat .s-sub{font-size:1cqw; font-weight:600; color:#3c6a96; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
-  .seat.long .s-name{font-size:1.7cqw}
-  .seat.xlong .s-name{font-size:1.4cqw}
-  .seat.narrow .s-name{font-size:1.6cqw}
-  .seat.narrow.long .s-name{font-size:1.25cqw}
-  .seat.narrow .s-top,.seat.narrow .s-sub{font-size:.85cqw}
-  .seat .s-mark{position:absolute; top:-1px; right:-1px; font-style:normal; font-size:.85cqw; font-weight:800; background:#c8a24a; color:#fff; border-radius:0 6px 0 6px; padding:1px 4px}
+  .seat > span{max-width:100%; white-space:nowrap; overflow:hidden; flex:none}
+  .seat .s-top{font-size:calc(var(--u) * 17); font-weight:700; color:#3c6a96}
+  .seat .s-name{font-size:calc(var(--u) * 31); font-weight:800; color:#16202e; line-height:1.12; margin:calc(var(--u) * 2) 0}
+  .seat .ln{display:inline}
+  .seat .ln + .ln{margin-left:.3em}
+  .seat .two .ln{display:block}
+  .seat .two .ln + .ln{margin-left:0}
+  .seat .s-name small{font-size:.65em; margin-left:1px}
+  .seat .s-sub{font-size:calc(var(--u) * 19); font-weight:700; color:#3c6a96}
+  /* 高さ半分の札（MS の会長・進行）。席番号が無いので上の余白を詰める */
+  .seat.short{padding:calc(var(--u) * 4) calc(var(--u) * 8)}
+  .seat.narrow .s-top{font-size:calc(var(--u) * 15)}
+  .seat.narrow .s-name{font-size:calc(var(--u) * 27)}
+  .seat.narrow .s-sub{font-size:calc(var(--u) * 17)}
+  /* アテンドは主役のゲストより控えめな大きさにする */
+  .seat.r-attend .s-name{font-size:calc(var(--u) * 25)}
+  .seat.narrow.r-attend .s-name{font-size:calc(var(--u) * 22)}
+  .seat .s-no{position:absolute; top:calc(var(--u) * 3); left:calc(var(--u) * 7); font-style:normal; font-size:calc(var(--u) * 14); font-weight:800; color:#8a96a8; line-height:1.1; letter-spacing:.02em}
+  /* 性別の印：札の右上の小さな丸（女性はピンク、男性は青）。白い縁で、青いゲストの札の上でも見える */
+  .seat .s-sex{position:absolute; top:calc(var(--u) * 7); right:calc(var(--u) * 8); width:calc(var(--u) * 14); height:calc(var(--u) * 14);
+    border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(15,47,79,.12)}
+  .s-sex.f,.sx.f{background:#e0569a}
+  .s-sex.m,.sx.m{background:#2f6fd0}
+  .sx{display:inline-block; width:.62em; height:.62em; border-radius:50%; margin-left:.35em; vertical-align:.08em; box-shadow:0 0 0 1.5px #fff}
+  .seat .s-mark{position:absolute; top:-1px; right:-1px; font-style:normal; font-size:calc(var(--u) * 14); font-weight:800; background:#c8a24a; color:#fff; border-radius:0 6px 0 6px; padding:1px 4px}
   .seat.empty{background:#f6f8fb; border:1.5px solid #dde3eb}
-  .seat .s-hint{font-size:1.1cqw; font-weight:700; color:#a6afbd}
+  .seat .s-hint{font-size:calc(var(--u) * 19); font-weight:800; color:#8f99a8; white-space:nowrap}
+  .seat .s-hint[data-duty],.seat .s-top[data-duty]{cursor:grab}
+  .seat .s-x{position:absolute; top:calc(var(--u) * 1); right:calc(var(--u) * 4); border:0; background:transparent;
+    color:#8a96a8; font-size:calc(var(--u) * 20); font-weight:800; line-height:1; padding:0 2px; cursor:pointer; font-family:inherit}
   .seat.empty.h-leader{border-color:#cfe6d3}
   .seat.empty.h-leader .s-hint{color:#7fb98a}
   .seat.empty.h-chair .s-hint{color:#e0938a}
@@ -184,29 +211,12 @@
 
   .legend{display:flex; flex-wrap:wrap; gap:6px 14px; margin:10px 2px 0; font-size:.78rem; color:var(--sub); font-weight:700}
   .legend i{display:inline-block; width:18px; height:12px; border-radius:3px; border:2.5px solid; vertical-align:-1px; margin-right:5px}
+  .legend .sx{width:12px; height:12px; margin:0 5px 0 0; vertical-align:-1px; box-shadow:none}
 
   .drag-ghost{position:fixed; z-index:100; pointer-events:none; transform:translate(-50%,-130%); background:#0f2f4f; color:#fff; font-weight:800;
     border-radius:9px; padding:6px 12px; font-size:.92rem; box-shadow:0 8px 20px rgba(0,0,0,.25); white-space:nowrap}
   body.dragging, body.dragging *{cursor:grabbing !important}
 
-  /* ---- 卓ごとの一覧（スマホでも読める） ---- */
-  .list{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; margin-top:14px}
-  .list section{background:#fff; border:1px solid #e6ebf2; border-radius:12px; padding:10px 12px}
-  .list h3{margin:0 0 6px; font-size:.92rem; color:var(--navy)}
-  .list ul{list-style:none; margin:0; padding:0}
-  .list li{display:grid; grid-template-columns:5.6em 1fr; gap:0 8px; padding:5px 0; border-top:1px solid #f0f2f6; font-size:.88rem}
-  .list li:first-child{border-top:0}
-  .l-role{font-size:.72rem; font-weight:800; color:var(--sub); padding-top:2px}
-  .l-name{font-weight:800}
-  .l-name small{display:block; font-size:.74rem; font-weight:600; color:#3c6a96}
-  .l-sub{grid-column:2; font-size:.76rem; color:#30475e}
-  .list li.r-guest .l-role{color:#2f86d6}
-  .list li.r-guest .l-name{color:#0d3b66}
-  .list li.r-attend .l-role{color:#1f4e8c}
-  .list li.r-leader .l-role{color:#3c9a4c}
-  .list li.r-chair .l-role{color:#d2493a}
-  .list li.r-speaker .l-role{color:#cf4f95}
-  .list li.r-mc .l-role,.list li.r-yaku .l-role{color:#9a6e10}
 
   /* ---- ダイアログ ---- */
   dialog{border:0; border-radius:16px; padding:0; width:min(520px,calc(100vw - 24px)); box-shadow:0 20px 50px rgba(10,20,35,.35)}
@@ -240,16 +250,19 @@
   .seat-info{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:0; font-size:.88rem}
   .seat-info dt{color:var(--sub); font-weight:800; font-size:.76rem; padding-top:2px}
   .seat-info dd{margin:0}
+  #seat-duty-name{margin:0; font-weight:800}
+  .duty-lead{font-size:.82rem; color:var(--sub); line-height:1.6; margin:0 0 8px}
   .btn.danger{color:#a32a1c; border-color:#f0c0b8}
 
   .foot-note{margin:16px 2px 0; font-size:.74rem; color:#a6adb8; line-height:1.8}
 
   @media print{
     body{background:#fff}
-    .bar,.sub-tools,.notice,.picking,.warn,.pool,.list,.foot-note,.topbar{display:none !important}
+    .bar,.sub-tools,.notice,.picking,.warn,.pool,.foot-note,.topbar{display:none !important}
     body.edit .main{grid-template-columns:1fr}
     .board-box{border:0; box-shadow:none; padding:0}
     .board-min{min-width:0}
+    .tbl-n{display:none !important}
     @page{size:A4 portrait; margin:8mm}
   }
 </style>
@@ -277,13 +290,17 @@
     <label class="who edit-only">保存する人<input type="text" id="who" placeholder="お名前" autocomplete="name"></label>
     <button type="button" class="btn primary edit-only" id="btn-save">保存</button>
     <button type="button" class="btn" id="btn-image">画像にする（LINE用）</button>
+    <button type="button" class="btn primary view-only" id="btn-edit">編集する</button>
+    <button type="button" class="btn edit-only" id="btn-view">編集を終える</button>
   </div>
   <div class="sub-tools">
     <button type="button" class="linklike" id="btn-today">次のMSにもどる</button>
     <button type="button" class="linklike" id="btn-reload">更新</button>
     <button type="button" class="linklike" id="btn-link">見る用のリンクをコピー</button>
     <button type="button" class="linklike edit-only" id="btn-template" hidden></button>
+    <button type="button" class="linklike edit-only" id="btn-duty">お役を追加</button>
     <button type="button" class="linklike edit-only" id="btn-clear">すべての席を空ける</button>
+    <button type="button" class="linklike edit-only" id="btn-pool">ゲスト一覧をしまう（席図を広く）</button>
   </div>
 
   <div class="notice" id="notice" hidden></div>
@@ -304,14 +321,15 @@
           <span><i style="border-color:#3c9a4c"></i>テーブルリーダー</span>
           <span><i style="border-color:#b9861b;background:#fffaf0"></i>司会・お役</span>
           <span><i style="border-color:#dde3eb;background:#f6f8fb;border-width:1.5px"></i>自由席</span>
+          <span><b class="sx f"></b>女性</span>
+          <span><b class="sx m"></b>男性</span>
         </div>
       </div>
-      <div class="list" id="list"></div>
     </div>
   </div>
 
   <p class="foot-note">
-    <span class="edit-only">ゲストは左の一覧から席へ運ぶか、名前を押してから空いている席を押します。席から席へ運ぶと入れ替わり、左の一覧へ戻すと席から外れます。空いている席を押すと、名簿から会員を探して置けます。<br></span>
+    <span class="edit-only">ゲストは左の一覧から席へ運ぶか、名前を押してから空いている席を押します。席から席へ運ぶと入れ替わり、左の一覧へ戻すと席から外れます。空いている席を押すと、名簿から会員を探して置けます。朝の挨拶などのお役は、左の一覧や席の名前をつかんで別の席へ動かせます。<br></span>
     名前が入っていない席は自由席です。ゲストの一覧は受付・紹介者フォームで登録されたゲスト情報から出しています。<br>
     ゲストの個人情報が含まれます。URL を会員以外に共有しないでください。
   </p>
@@ -346,6 +364,14 @@
       <h3>役を変える</h3>
       <div class="roles" id="seat-roles"></div>
     </div>
+    <div id="seat-duty-box" hidden>
+      <h3>この席のお役</h3>
+      <p id="seat-duty-name"></p>
+      <div class="dlg-foot" style="margin-top:8px">
+        <button type="button" class="btn danger" id="seat-duty-off">お役を外す</button>
+        <button type="button" class="btn" id="seat-duty-move">お役を別の席へ</button>
+      </div>
+    </div>
     <div class="dlg-foot">
       <button type="button" class="btn danger" id="seat-remove">席から外す</button>
       <button type="button" class="btn" id="seat-move">別の席へ動かす</button>
@@ -354,13 +380,28 @@
   </div>
 </dialog>
 
+<dialog id="duty-dialog">
+  <div class="dlg">
+    <h2>お役を追加</h2>
+    <p class="duty-lead">名前を選ぶか入れてから、席図の置く席を押します。同じ名前をいくつでも置けます。</p>
+    <h3>よく使う名前</h3>
+    <div class="roles" id="duty-presets"></div>
+    <h3>名前を入れて追加</h3>
+    <div class="row">
+      <input type="text" id="duty-free" placeholder="例：朝の挨拶" autocomplete="off">
+      <button type="button" class="btn primary" id="duty-free-add">席を選ぶ</button>
+    </div>
+    <div class="dlg-foot"><button type="button" class="btn" id="duty-close">閉じる</button></div>
+  </div>
+</dialog>
+
 <script>if (new URLSearchParams(location.search).get("edit") === "1") document.body.classList.add("edit");</script>
 <script src="members-data.js?v=20261013a"></script>
 <script src="config.js?v=20261011a"></script>
 <script src="app.js?v=20261007a"></script>
-<script src="haiseki-layouts.js?v=20261018h"></script>
+<script src="haiseki-layouts.js?v=20261026a"></script>
 <script src="haiseki-program.js?v=20261018c"></script>
-<script src="haiseki-image.js?v=20261018h"></script>
-<script src="haiseki.js?v=20261018h"></script>
+<script src="haiseki-image.js?v=20261026a"></script>
+<script src="haiseki.js?v=20261026a"></script>
 </body>
 </html>
