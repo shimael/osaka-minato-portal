@@ -378,9 +378,15 @@
 
   async function api(params) {
     const q = new URLSearchParams(Object.assign({ key: K.currentKey(), _: Date.now() }, params));
-    const j = await (await fetch(C.api.endpoint + "?" + q)).json();
-    if (!j.ok) throw new Error(j.error || "読み込めませんでした");
-    return j;
+    const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 20000) : null;
+    try {
+      const j = await (await fetch(C.api.endpoint + "?" + q, ctrl ? { signal: ctrl.signal } : {})).json();
+      if (!j.ok) throw new Error(j.error || "読み込めませんでした");
+      return j;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
   async function loadBoard(fresh) {
     const year = date.slice(0, 4);
@@ -395,7 +401,17 @@
   }
   async function loadSeating() {
     const want = date + "|" + kind;
-    const j = await api({ action: "seating", date, kind });
+    let j;
+    try {
+      j = await api({ action: "seating", date, kind });
+    } catch (e) {
+      /* 受付スクリプトがまだ古いときは、席図だけ出して保存先は空のままにする */
+      if (String(e && e.message) === "unknown action") {
+        if (!dirty) applyRecord({});
+        return;
+      }
+      throw e;
+    }
     if (date + "|" + kind !== want) return;
     previous = j.previous;
     const s = j.seating;
@@ -460,11 +476,16 @@
   async function reloadAll(fresh) {
     loading = true;
     render();
-    try {
-      await Promise.all([loadBoard(fresh), loadSeating(), loadProgram(fresh)]);
-      loadError = "";
-    } catch (e) {
+    const results = await Promise.allSettled([loadBoard(fresh), loadSeating(), loadProgram(fresh)]);
+    const seatFail = results[1].status === "rejected";
+    const boardFail = results[0].status === "rejected";
+    if (seatFail && boardFail) {
       loadError = "読み込みに時間がかかっています。少し待ってから「更新」を押してください。";
+    } else {
+      loadError = "";
+      if (seatFail && !notice) {
+        notice = "配席の保存先を読めませんでした。席図は出しますが、保存した内容はまだ入っていません。";
+      }
     }
     loading = false;
     refreshSeatedGuests();
