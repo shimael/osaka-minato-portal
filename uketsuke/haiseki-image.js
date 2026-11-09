@@ -302,9 +302,9 @@
       const nameRow = { t: p.name, size: nameSize, weight: 800, color: c.ink, lh: 1.12, gap: 2, name: true };
       if (p.type === "guest") {
         seatText(ctx, [
-          { t: p.kana, size: narrow ? 15 : 17, weight: 700, color: "#3c6a96", kana: true },
+          { t: p.kana, size: narrow ? 15 : 17, weight: 700, color: "#b54a45", kana: true },
           Object.assign(nameRow, { suffix: "様" }),
-          { t: p.referrer ? "紹介 " + p.referrer : "ゲスト", size: narrow ? 17 : 19, weight: 700, color: "#3c6a96" }
+          { t: p.referrer ? "紹介 " + p.referrer : "ゲスト", size: narrow ? 17 : 19, weight: 700, color: "#b54a45" }
         ], s.x, s.y, w, h, short);
       } else {
         const tag = dutyName || o.roleShort[p.role] || "";

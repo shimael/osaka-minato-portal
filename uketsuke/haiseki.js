@@ -33,7 +33,7 @@
   const DUTY_PRESETS = ["朝の挨拶", "会員スピーチ", "連絡事項", "誓いの言葉", "進行", "タイムキーパー"];
   /* 印刷・画像の色。画面の CSS（haiseki.html）と同じ色にそろえる */
   const COLORS = {
-    guest:   { fill: "#e3f1ff", line: "#2f86d6", band: "#2f86d6", ink: "#0d3b66" },
+    guest:   { fill: "#fdecea", line: "#c62828", band: "#c62828", ink: "#7f1d1d" },
     attend:  { fill: "#ffffff", line: "#1f4e8c", band: "#1f4e8c", ink: "#16202e" },
     leader:  { fill: "#ffffff", line: "#3c9a4c", band: "#3c9a4c", ink: "#16202e" },
     chair:   { fill: "#fff1ef", line: "#d2493a", band: "#d2493a", ink: "#16202e" },

@@ -12,7 +12,7 @@
      MS・朝食会 配席
 
      色は役ごとに決める（画像の haiseki.js COLORS と同じ）。
-       ゲスト＝水色の地、アテンド＝紺の枠、会長＝赤、講話者＝ピンク、リーダー＝緑、司会・お役＝金
+       ゲスト＝赤の地、アテンド＝紺の枠、会長＝珊瑚、講話者＝ピンク、リーダー＝緑、司会・お役＝金
      名前が入っていない席は薄いグレーにして目立たせない。
      ============================================================ */
   body{background:var(--bg)}
@@ -98,22 +98,22 @@
   .pool{background:#fff; border:1px solid #e6ebf2; border-radius:14px; padding:10px; box-shadow:0 4px 14px rgba(20,45,80,.05);
     position:sticky; top:8px; max-height:calc(100vh - 16px); overflow:auto; user-select:none; -webkit-user-select:none}
   @media(max-width:980px){ .pool{position:static; max-height:none} }
-  .pool.drop-on{outline:3px dashed #2f86d6; outline-offset:-3px}
+  .pool.drop-on{outline:3px dashed #c62828; outline-offset:-3px}
   .pool-head{display:flex; align-items:baseline; justify-content:space-between; margin:2px 4px 8px}
   .pool-head h2{margin:0; font-size:.95rem}
   .pool-head span{font-size:.78rem; color:var(--sub); font-weight:700}
   .pool-head.sm{margin-top:14px}
   .pool-empty{color:var(--sub); font-size:.82rem; line-height:1.7; margin:8px 4px}
   .pool-more summary{cursor:pointer; font-size:.8rem; font-weight:800; color:var(--sub); margin:12px 4px 8px}
-  .g-item{border:1px solid #d7e6f6; border-radius:12px; margin-bottom:8px; overflow:hidden; background:#fff}
-  .g-item.seated{border-color:#e6ebf2}
-  .g-main{display:grid; grid-template-columns:1fr auto; gap:0 8px; width:100%; text-align:left; border:0; background:#e3f1ff;
-    padding:9px 11px 8px; cursor:grab; font-family:inherit; color:inherit; border-left:6px solid #2f86d6}
-  .g-item.seated .g-main{background:#f4f8fc; border-left-color:#a9c9ea}
+  .g-item{border:1px solid #f0d0cc; border-radius:12px; margin-bottom:8px; overflow:hidden; background:#fff}
+  .g-item.seated{border-color:#ead9d6}
+  .g-main{display:grid; grid-template-columns:1fr auto; gap:0 8px; width:100%; text-align:left; border:0; background:#fdecea;
+    padding:9px 11px 8px; cursor:grab; font-family:inherit; color:inherit; border-left:6px solid #c62828}
+  .g-item.seated .g-main{background:#faf2f1; border-left-color:#e8a8a4}
   .g-main.picked{outline:3px solid #c2410c; outline-offset:-3px}
-  .g-kana{grid-column:1; font-size:.8rem; color:#3c6a96; font-weight:700}
+  .g-kana{grid-column:1; font-size:.8rem; color:#b54a45; font-weight:700}
   .g-name{grid-column:1; font-size:1.2rem; font-weight:800; line-height:1.3}
-  .g-name small{font-size:.7em; margin-left:2px; color:#3c6a96}
+  .g-name small{font-size:.7em; margin-left:2px; color:#b54a45}
   .g-ref{grid-column:1; font-size:.8rem; color:#30475e; margin-top:2px}
   .g-marks{grid-column:1; display:flex; flex-wrap:wrap; gap:4px; margin-top:5px}
   .g-marks i{font-style:normal; font-size:.68rem; font-weight:800; border-radius:999px; padding:1px 8px; background:#fff; color:#8a6620; border:1px solid #ecd59a}
@@ -136,7 +136,7 @@
   .chip.c-speaker{border-color:#cf4f95} .chip.c-speaker .c-role{background:#cf4f95}
   .chip.c-mc,.chip.c-yaku{border-color:#b9861b} .chip.c-mc .c-role,.chip.c-yaku .c-role{background:#b9861b}
   .chip.c-member{border-color:#8a96a8} .chip.c-member .c-role{background:#8a96a8}
-  .chip.c-guest{border-color:#2f86d6; background:#e3f1ff} .chip.c-guest .c-role{background:#2f86d6}
+  .chip.c-guest{border-color:#c62828; background:#fdecea} .chip.c-guest .c-role{background:#c62828}
   .chip .c-del{margin-left:2px; font-size:.66rem; font-weight:800; color:#a32a1c; text-decoration:underline}
 
   /* ---- 席図 ---- */
@@ -177,7 +177,7 @@
   .seat.r-attend .s-name{font-size:calc(var(--u) * 25)}
   .seat.narrow.r-attend .s-name{font-size:calc(var(--u) * 22)}
   .seat .s-no{position:absolute; top:calc(var(--u) * 3); left:calc(var(--u) * 7); font-style:normal; font-size:calc(var(--u) * 14); font-weight:800; color:#8a96a8; line-height:1.1; letter-spacing:.02em}
-  /* 性別の印：札の右上の小さな丸（女性はピンク、男性は青）。白い縁で、青いゲストの札の上でも見える */
+  /* 性別の印：札の右上の小さな丸（女性はピンク、男性は青）。白い縁で、赤いゲストの札の上でも見える */
   .seat .s-sex{position:absolute; top:calc(var(--u) * 7); right:calc(var(--u) * 8); width:calc(var(--u) * 14); height:calc(var(--u) * 14);
     border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px rgba(15,47,79,.12)}
   .s-sex.f,.sx.f{background:#e0569a}
@@ -201,8 +201,9 @@
   .seat.ghost{border:2px dashed #1f4e8c; background:#f2f6fc; opacity:.85}
   .seat.ghost .s-top,.seat.ghost .s-sub{color:#1f4e8c}
   .seat.ghost .s-name{color:#1f4e8c}
-  .seat.r-guest{background:#e3f1ff; border:3px solid #2f86d6}
-  .seat.r-guest .s-name{color:#0d3b66}
+  .seat.r-guest{background:#fdecea; border:3px solid #c62828}
+  .seat.r-guest .s-name{color:#7f1d1d}
+  .seat.r-guest .s-top,.seat.r-guest .s-sub{color:#b54a45}
   .seat.r-attend{border-color:#1f4e8c} .seat.r-attend .s-top{color:#1f4e8c; font-weight:800}
   .seat.r-leader{border-color:#3c9a4c} .seat.r-leader .s-top{color:#3c9a4c; font-weight:800}
   .seat.r-chair{border-color:#d2493a; background:#fff1ef} .seat.r-chair .s-top{color:#d2493a; font-weight:800}
@@ -242,7 +243,7 @@
   .role-btn.r-speaker[aria-pressed="true"]{background:#cf4f95; border-color:#cf4f95}
   .role-btn.r-mc[aria-pressed="true"],.role-btn.r-yaku[aria-pressed="true"]{background:#b9861b; border-color:#b9861b}
   .role-btn.r-member[aria-pressed="true"]{background:#8a96a8; border-color:#8a96a8}
-  .role-btn.r-guest[aria-pressed="true"]{background:#2f86d6; border-color:#2f86d6}
+  .role-btn.r-guest[aria-pressed="true"]{background:#c62828; border-color:#c62828}
   .dlg-foot{display:flex; justify-content:flex-end; gap:8px; margin-top:16px; flex-wrap:wrap}
   .seat-where{font-size:.78rem; color:var(--sub); font-weight:800}
   .seat-name{font-size:1.4rem; font-weight:800; margin:2px 0 8px}
@@ -314,7 +315,7 @@
       <div class="board-box">
         <div class="board-min"><div class="board" id="board"></div></div>
         <div class="legend">
-          <span><i style="border-color:#2f86d6;background:#e3f1ff"></i>ゲスト</span>
+          <span><i style="border-color:#c62828;background:#fdecea"></i>ゲスト</span>
           <span><i style="border-color:#1f4e8c"></i>アテンド</span>
           <span><i style="border-color:#d2493a;background:#fff1ef"></i>会長</span>
           <span><i style="border-color:#cf4f95;background:#fff0f7"></i>講話者</span>
@@ -401,7 +402,7 @@
 <script src="app.js?v=20261007a"></script>
 <script src="haiseki-layouts.js?v=20261026a"></script>
 <script src="haiseki-program.js?v=20261018c"></script>
-<script src="haiseki-image.js?v=20261026a"></script>
-<script src="haiseki.js?v=20261029a"></script>
+<script src="haiseki-image.js?v=20261110a"></script>
+<script src="haiseki.js?v=20261110a"></script>
 </body>
 </html>
