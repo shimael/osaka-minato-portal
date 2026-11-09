@@ -188,7 +188,7 @@
 
   /* ---------- 色の見方（画像のいちばん下） ---------- */
   function drawLegend(ctx, o, x, y) {
-    const legend = [["guest", "ゲスト"], ["attend", "アテンド"], ["chair", "会長"], ["speaker", "講話者"], ["leader", "リーダー"], ["yaku", "司会・お役"]];
+    const legend = [["guest", "ゲスト"], ["attend", "アテンド"], ["leader", "リーダー"], ["yaku", "会長・講話者・司会・お役"]];
     let lx = x;
     legend.forEach(([k, label]) => {
       const c = o.colors[k];

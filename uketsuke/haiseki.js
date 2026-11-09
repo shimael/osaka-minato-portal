@@ -36,8 +36,8 @@
     guest:   { fill: "#fdecea", line: "#c62828", band: "#c62828", ink: "#7f1d1d" },
     attend:  { fill: "#ffffff", line: "#1f4e8c", band: "#1f4e8c", ink: "#16202e" },
     leader:  { fill: "#ffffff", line: "#3c9a4c", band: "#3c9a4c", ink: "#16202e" },
-    chair:   { fill: "#fff1ef", line: "#d2493a", band: "#d2493a", ink: "#16202e" },
-    speaker: { fill: "#fff0f7", line: "#cf4f95", band: "#cf4f95", ink: "#16202e" },
+    chair:   { fill: "#fffaf0", line: "#b9861b", band: "#b9861b", ink: "#16202e" },
+    speaker: { fill: "#fffaf0", line: "#b9861b", band: "#b9861b", ink: "#16202e" },
     mc:      { fill: "#fffaf0", line: "#b9861b", band: "#b9861b", ink: "#16202e" },
     yaku:    { fill: "#fffaf0", line: "#b9861b", band: "#b9861b", ink: "#16202e" },
     member:  { fill: "#ffffff", line: "#8a96a8", band: "#8a96a8", ink: "#16202e" }
